@@ -1,0 +1,16 @@
+{
+  "name": "dgois100",
+  "owner": {
+    "name": "Danilo Gois"
+  },
+  "metadata": {
+    "description": "Plugins do Claude Code mantidos por Danilo Gois."
+  },
+  "plugins": [
+    {
+      "name": "ausencia",
+      "source": "./plugins/ausencia",
+      "description": "Modo ausente: o modelo trabalha sozinho, registra as dúvidas no AUSENTE.md e as apresenta uma a uma quando você volta."
+    }
+  ]
+}

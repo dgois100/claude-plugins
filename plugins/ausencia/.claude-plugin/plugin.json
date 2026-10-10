@@ -1,0 +1,12 @@
+{
+  "name": "ausencia",
+  "version": "0.1.0",
+  "description": "Modo ausente para o Claude Code: antes de sair você responde o que já se sabe; enquanto está fora, o modelo não pergunta nada e registra as dúvidas no AUSENTE.md; ao voltar, elas aparecem uma a uma com opções e recomendação.",
+  "author": {
+    "name": "Danilo Gois"
+  },
+  "homepage": "https://github.com/dgois100/claude-plugins",
+  "repository": "https://github.com/dgois100/claude-plugins",
+  "license": "MIT",
+  "keywords": ["ausente", "autonomia", "duvidas", "hooks"]
+}
