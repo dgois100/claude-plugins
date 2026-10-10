@@ -78,8 +78,8 @@ export function decidir(entrada, conteudo, caminhoRegras, caminhoRetorno) {
     if (entrada.source === 'compact') {
       return contexto(
         'SessionStart',
-        `Há um /voltei em andamento, com ${pendentes(n)} no AUSENTE.md. Releia o AUSENTE.md e siga ${skill('voltei', caminhoRetorno)} ` +
-          'a partir da primeira dúvida pendente (ou da fase 5, se só faltar aplicar).',
+        `Há um /voltei pela metade, com ${pendentes(n)} no AUSENTE.md. Não retome sozinho: pergunte ao usuário se quer continuar o /voltei; ` +
+          `se ele confirmar, releia o AUSENTE.md e siga ${skill('voltei', caminhoRetorno)}.`,
       );
     }
     return contexto('SessionStart', `Há um /voltei interrompido com ${pendentes(n)} no AUSENTE.md; sugira /voltei para terminar.`);

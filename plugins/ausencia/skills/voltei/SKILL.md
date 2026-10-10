@@ -18,7 +18,14 @@ Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status:
 
 ## Fase 3: resumo
 
-Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Conte também A, as respondidas que ainda não foram aplicadas: linha `**Resposta:**` preenchida, sem `_dispensada pela D<n>_` e sem o sufixo ` (aplicada)`; elas sobram de um /voltei anterior que parou na fase 5. Se N for 0 e A for maior que 0, vá para a fase 5. Se N e A forem 0, vá para a fase 6.
+Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Conte também A, as respondidas que ainda não foram aplicadas: linha `**Resposta:**` preenchida, sem `_dispensada pela D<n>_` e sem o sufixo ` (aplicada)`; elas sobram de um /voltei anterior que parou antes de aplicar tudo.
+
+Se A for maior que 0, liste essas decisões (D<n>, pergunta e resposta registrada) e, antes de qualquer outra coisa, pergunte com AskUserQuestion:
+- "Aplicar como estão (Recomendado)": siga em frente; elas serão aplicadas na fase 5.
+- "Perguntar de novo": troque a resposta delas por `_pendente_`, recalcule N e A, e siga.
+- "Parar por agora": mantenha `status: retomando`, não aplique nada e diga "Rode /voltei quando quiser continuar." Pare aqui.
+
+Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0, vá para a fase 5; se N e A forem 0, vá para a fase 6.
 
 ## Fase 4: perguntas, uma por vez
 

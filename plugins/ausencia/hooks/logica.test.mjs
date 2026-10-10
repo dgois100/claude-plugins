@@ -164,11 +164,12 @@ test('SessionStart startup, resume, clear e fork: sugere /voltei com a contagem'
   }
 });
 
-test('SessionStart com retomando: avisa o /voltei interrompido e, na compactação, aponta as regras do retorno', () => {
+test('SessionStart com retomando: avisa o /voltei interrompido e, na compactação, manda perguntar antes de retomar', () => {
   const texto = decidir(sessao('startup'), ARQ('retomando', 1), REGRAS, RETORNO).hookSpecificOutput.additionalContext;
   assert.match(texto, /\/voltei interrompido com 1 dúvida pendente/);
   const compactado = decidir(sessao('compact'), ARQ('retomando', 2), REGRAS, RETORNO).hookSpecificOutput.additionalContext;
-  assert.match(compactado, /\/voltei em andamento, com 2 dúvidas pendentes/);
+  assert.match(compactado, /\/voltei pela metade, com 2 dúvidas pendentes/);
+  assert.match(compactado, /Não retome sozinho: pergunte ao usuário se quer continuar o \/voltei/);
   assert.ok(compactado.includes(RETORNO));
   assert.ok(!compactado.includes(REGRAS));
 });

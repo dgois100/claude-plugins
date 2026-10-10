@@ -110,7 +110,7 @@ Regras do formato:
 - **Opções:** de 2 a 4, com exatamente uma marcada "(recomendada)", listada primeiro. Mesmo formato do `AskUserQuestion`, para virar pergunta direto no retorno.
 - **Resposta:** `_pendente_` até ser respondida no `/voltei`. Valores possíveis depois: o texto da escolha, ou `_dispensada pela Dn_`. Quando o `/voltei` aplica a decisão, acrescenta ` (aplicada)` ao fim da linha.
 - **Decisões tomadas antes de sair:** seção com uma linha por resposta dada no `/ausente` (`- <pergunta>: <resposta>`), para sobreviver a uma compactação. O hook não lê essa seção.
-- **Leitura pelo hook:** o hook só lê o frontmatter. Bloqueia apenas quando `status` é exatamente `ausente`. Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não age (fail-open). O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
+- **Leitura pelo hook:** o hook só lê o frontmatter. Bloqueia apenas quando o primeiro termo de `status`, sem aspas, é `ausente` (então `"ausente"` e `ausente # nota` também contam). Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não age (fail-open). O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
 
 ## 3. `/ausente` e o comportamento durante a ausência
 
@@ -161,7 +161,7 @@ O hook é o script `hooks/ausencia-hook.mjs`, sem dependências. Ele lê o JSON 
 - `localizarAusente(cwd, projectDir, existe)` → caminho do `AUSENTE.md` ou `null`.
 - `decidir(entrada, conteudo, caminhoRegras, caminhoRetorno)` → objeto de saída do hook ou `null`. As mensagens citam o caminho absoluto do `SKILL.md` de cada skill, porque as duas têm `disable-model-invocation: true` e o modelo precisa relê-las pelo caminho depois de uma compactação.
 
-**Regra geral:** se `conteudo` é `null` (sem arquivo) ou `status` não é `ausente`, `decidir` retorna `null` para todos os eventos. Exceção: com `status: retomando`, o `SessionStart` age. Na compactação (`compact`), injeta "Há um /voltei em andamento, com {n} dúvida(s) pendente(s) no AUSENTE.md. Releia o AUSENTE.md e siga a skill ausencia:voltei ({caminho}) a partir da primeira dúvida pendente (ou da fase 5, se só faltar aplicar)."; nas demais origens (`startup|resume|clear|fork`), injeta "Há um /voltei interrompido com {n} dúvida(s) pendente(s) no AUSENTE.md; sugira /voltei para terminar.", para o arquivo não ficar esquecido.
+**Regra geral:** se `conteudo` é `null` (sem arquivo) ou `status` não é `ausente`, `decidir` retorna `null` para todos os eventos. Exceção: com `status: retomando`, o `SessionStart` age. Na compactação (`compact`), injeta "Há um /voltei pela metade, com {n} dúvida(s) pendente(s) no AUSENTE.md. Não retome sozinho: pergunte ao usuário se quer continuar o /voltei; se ele confirmar, releia o AUSENTE.md e siga a skill ausencia:voltei ({caminho})."; nas demais origens (`startup|resume|clear|fork`), injeta "Há um /voltei interrompido com {n} dúvida(s) pendente(s) no AUSENTE.md; sugira /voltei para terminar.", para o arquivo não ficar esquecido.
 
 | Evento (matcher) | Condição extra | Saída |
 |---|---|---|
@@ -182,14 +182,14 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
 ## 5. `/voltei`
 
 1. **Lê o `AUSENTE.md`.** Se não existir: responde "Nenhum modo ausente ativo neste diretório" e termina.
-2. **Muda `status` para `retomando`.** A partir daí os hooks não agem e o `AskUserQuestion` volta a funcionar.
-3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo. Se não houver pendentes, mas houver respondidas ainda sem ` (aplicada)` (um `/voltei` anterior parou no passo 5), vai direto ao passo 5.
+2. **Muda `status` para `retomando`.** A partir daí os hooks não bloqueiam nada (só o `SessionStart` avisa; ver seção 4) e o `AskUserQuestion` volta a funcionar.
+3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo. Se houver respondidas ainda sem ` (aplicada)` (de um `/voltei` anterior que parou antes de aplicar tudo), lista essas decisões e pede confirmação antes de seguir: aplicar como estão, perguntar de novo ou parar por agora. Sem pendentes, segue direto para o passo 5.
 4. **Pergunta uma a uma** via `AskUserQuestion`:
    - **Ordem:** primeiro as `ESTACIONADA` (destravam trabalho), depois as `PROVISÓRIA`; dentro de cada grupo, em ordem de registro.
    - **Opções:** as registradas, com a recomendada primeiro. Nas `PROVISÓRIA`, a primeira opção é "Manter: {opção aplicada}"; uma resposta que começa com "Manter" conta como mantida.
    - **Gravação imediata:** cada resposta é escrita no campo **Resposta** antes da próxima pergunta (o rótulo, sem "(Recomendado)"), para sobreviver a uma compactação. Um pedido para parar digitado em "Other" não é gravado como resposta.
    - **Dispensa:** se uma resposta torna outra dúvida sem sentido, ela é marcada `_dispensada pela Dn_` e pulada.
-   - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso, e uma compactação no meio do `/voltei` faz o `SessionStart` apontar as regras do retorno.
+   - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso, e, se o contexto for compactado no meio do `/voltei`, o `SessionStart` manda o modelo perguntar se o usuário quer continuar, em vez de retomar sozinho.
 5. **Aplica as decisões** que ainda não têm ` (aplicada)`, marcando cada uma com esse sufixo logo depois de concluí-la, para um `/voltei` interrompido nunca repetir nem pular uma decisão:
    - `PROVISÓRIA` com escolha diferente da aplicada: desfaz e refaz conforme a escolha.
    - `ESTACIONADA` aprovada: executa agora, passando pelas permissões normais.
@@ -215,7 +215,7 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
 ## 7. Testes
 
 - **Unitários** (`node --test`), escritos antes do código (TDD), sobre as funções puras:
-  - `lerFrontmatter`: sem frontmatter, `ausente`, `retomando`, valor desconhecido, conteúdo lixo, CRLF.
+  - `lerFrontmatter`: sem frontmatter, `ausente`, `retomando`, valor desconhecido, conteúdo lixo, CRLF, BOM, aspas e comentário depois do valor.
   - `contarPendentes`: zero, várias, respostas preenchidas e dispensadas.
   - `decidir`, para cada evento × estado (sem arquivo, `ausente`, `retomando`, corrompido): agente principal versus subagente no `PreToolUse`; cada matcher de `SessionStart`, incluindo a exceção de `retomando`; prompts que começam com os comandos do plugin versus outros no `UserPromptSubmit`; `stop_hook_active` verdadeiro e falso no `Stop`.
   - Execução do script de ponta a ponta com stdin simulado: JSON válido na saída, código 0, e código 0 sem saída quando o stdin é inválido; entrada que chega aos poucos; stdin que nunca fecha (o hook termina em até 2 s, sem saída).

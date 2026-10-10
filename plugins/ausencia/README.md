@@ -53,7 +53,7 @@ Os valores possíveis do `status` são `ausente` (perguntas bloqueadas) e `retom
 | Hook | O que faz no modo ausente |
 |---|---|
 | `PreToolUse` (`AskUserQuestion`) | Nega a pergunta e manda registrar no `AUSENTE.md`. Subagentes são orientados a devolver a dúvida no relatório. |
-| `SessionStart` | Depois de uma compactação, relembra o modo e onde estão as regras (se for no meio do `/voltei`, aponta as regras do retorno). Ao abrir, retomar, limpar ou bifurcar uma sessão, sugere `/voltei`, inclusive quando um `/voltei` ficou pela metade. |
+| `SessionStart` | Depois de uma compactação, relembra o modo e onde estão as regras (se for no meio do `/voltei`, manda perguntar se você quer continuar, em vez de retomar sozinho). Ao abrir, retomar, limpar ou bifurcar uma sessão, sugere `/voltei`, inclusive quando um `/voltei` ficou pela metade. |
 | `UserPromptSubmit` | Se você digitar algo que não seja `/ausente` ou `/voltei`, lembra o Claude de sugerir `/voltei`. |
 | `Stop` | Na primeira tentativa de encerrar o turno, cobra um checklist: nenhuma pergunta no texto, nada independente sobrando e resumo atualizado. |
 
