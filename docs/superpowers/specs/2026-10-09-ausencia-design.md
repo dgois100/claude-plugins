@@ -1,0 +1,216 @@
+# Plugin `ausencia`: design
+
+- **Data:** 2026-10-09
+- **Estado:** design aprovado em conversa; spec aguardando revisão do usuário.
+- **Repositório:** `C:\Users\Danilo Gois\claude-plugins` (será publicado em `github.com/dgois100/claude-plugins`, público).
+
+## Objetivo
+
+Permitir que o usuário avise o Claude Code de que vai se ausentar, sem que o trabalho pare e sem que decisões dele sejam tomadas no lugar dele de forma arriscada.
+
+- **Na saída** (`/ausente`): o modelo resolve com o usuário, ainda presente, as decisões já conhecidas e as previsíveis; depois entra em modo ausente e continua trabalhando.
+- **Durante a ausência:** nenhuma pergunta vai para o chat. Toda dúvida é registrada em `AUSENTE.md`, com opções e uma recomendação.
+- **No retorno** (`/voltei`): as dúvidas aparecem uma a uma, com opções e recomendação, no mesmo estilo do brainstorming. As respostas são aplicadas e o `AUSENTE.md` é apagado.
+
+## Critérios de sucesso
+
+1. Em modo ausente, o `AskUserQuestion` é negado e nenhum turno termina sem passar pela checagem de "pergunta no texto".
+2. Toda dúvida surgida na ausência termina no `AUSENTE.md` com tipo, contexto, opções e recomendação.
+3. Nenhuma ação irreversível ou externa (lista na seção 3) é executada em modo ausente.
+4. O modo ausente sobrevive a uma compactação de contexto e a fechar e reabrir a sessão.
+5. O `/voltei` apresenta todas as dúvidas pendentes uma a uma, aplica as respostas e só então apaga o arquivo.
+6. Outra pessoa instala o plugin a partir do GitHub com dois comandos.
+
+## Fora de escopo
+
+- Prompts de permissão do próprio Claude Code. Se o modo de permissão pedir aprovação, a sessão fica parada até o usuário voltar; o README recomenda auto mode ou allowlist antes de sair.
+- Isolamento entre duas sessões no mesmo diretório. O estado é por diretório (limitação documentada).
+- Notificações externas (Telegram, e-mail etc.).
+- Tradução para outros idiomas além do resumo em inglês do README.
+
+## 1. Estrutura, instalação e publicação
+
+```
+claude-plugins/                               ← repo git; marketplace "dgois100"
+├─ .claude-plugin/marketplace.json
+├─ README.md                                  ← PT-BR + seção "English summary"
+├─ LICENSE                                    ← MIT
+├─ docs/superpowers/specs/2026-10-09-ausencia-design.md
+└─ plugins/ausencia/
+   ├─ .claude-plugin/plugin.json              ← name "ausencia", version "0.1.0"
+   ├─ README.md                               ← uso detalhado do plugin
+   ├─ skills/ausente/SKILL.md                 ← fluxo de saída
+   ├─ skills/voltei/SKILL.md                  ← fluxo de retorno
+   └─ hooks/
+      ├─ hooks.json
+      ├─ ausencia-hook.mjs
+      └─ ausencia-hook.test.mjs
+```
+
+- **Marketplace:** `.claude-plugin/marketplace.json` com `name: "dgois100"` e o plugin `ausencia` com `source: "./plugins/ausencia"` (caminho relativo à raiz do marketplace).
+- **Comandos:** `/ausencia:ausente` e `/ausencia:voltei`. As formas curtas `/ausente` e `/voltei` devem funcionar por não haver conflito; isso é verificado no smoke test.
+- **Uso pelo autor:** marketplace registrado pela pasta local (`claude plugin marketplace add "C:/Users/Danilo Gois/claude-plugins"` e `claude plugin install ausencia@dgois100`). Plugin com caminho relativo em marketplace local é carregado direto da pasta: edições valem após `/reload-plugins`, sem reinstalar.
+- **Uso por terceiros:** `claude plugin marketplace add dgois100/claude-plugins` e `claude plugin install ausencia@dgois100`. Atualizações: `claude plugin marketplace update dgois100` e `claude plugin update ausencia@dgois100`. O `version` do `plugin.json` sobe a cada versão publicada.
+- **Publicação:** criar o repositório público e fazer o push é o último passo do plano e exige confirmação explícita do usuário no momento.
+- **Conteúdo público:** nada específico do ambiente do autor (caminhos pessoais, regras de outros projetos). A lista de ações de risco é genérica.
+- **Idioma:** comandos, arquivo de estado, skills e README em PT-BR; README com seção curta "English summary".
+- **Pré-requisito:** `node` no PATH, para os hooks. Sem node, os hooks falham sem bloquear nada e o plugin funciona só pelas instruções das skills, com menos garantia. Documentado no README.
+
+## 2. Formato do `AUSENTE.md`
+
+Fica na raiz do diretório de trabalho da sessão (`cwd`). Exemplo:
+
+```markdown
+---
+status: ausente
+desde: 2026-10-09 22:30
+tarefa: Implementar o plano X a partir da Task 3
+---
+
+# Ausente
+
+## Feito enquanto você estava fora
+- Task 3 concluída (commit abc123)
+- Task 4 parcial: falta a validação do formulário (aguarda D1)
+
+## Dúvidas
+
+### D1 · ESTACIONADA · Fazer push da branch para o remoto?
+- **Contexto:** a Task 4 pede abrir PR; push é ação externa.
+- **Opções:**
+  1. **Push + PR em draft (recomendada)**: ...
+  2. **Só commit local**: ...
+- **Travado esperando isto:** abertura do PR e Task 6.
+- **Resposta:** _pendente_
+
+### D2 · PROVISÓRIA · Nome da tabela de logs
+- **Contexto:** ...
+- **Opções:**
+  1. **`log_eventos` (recomendada)**: ...
+  2. **`eventos_log`**: ...
+- **Feito com a opção 1:** migration 012, model LogEvento.
+- **Como desfazer se você escolher outra:** renomear em 2 arquivos.
+- **Resposta:** _pendente_
+```
+
+Regras do formato:
+
+- **Cabeçalho:** frontmatter YAML com `status` (`ausente` ou `retomando`), `desde` (data e hora local) e `tarefa` (uma linha).
+- **Numeração:** `D1`, `D2`… em ordem de registro, nunca reutilizada.
+- **Tipos:**
+  - `ESTACIONADA`: ação irreversível ou externa. Nada foi feito; o campo "Travado esperando isto" diz o que ficou parado.
+  - `PROVISÓRIA`: decisão reversível. O modelo seguiu com a recomendada; os campos "Feito com a opção N" e "Como desfazer" dizem o que foi feito e como reverter.
+- **Opções:** de 2 a 4, com exatamente uma marcada "(recomendada)", listada primeiro. Mesmo formato do `AskUserQuestion`, para virar pergunta direto no retorno.
+- **Resposta:** `_pendente_` até ser respondida no `/voltei`. Valores possíveis depois: o texto da escolha, ou `_dispensada pela Dn_`.
+- **Leitura pelo hook:** o hook só lê o frontmatter. Bloqueia apenas quando `status` é exatamente `ausente`. Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não age (fail-open). O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
+
+## 3. `/ausente` e o comportamento durante a ausência
+
+### Fluxo do `/ausente [instrução opcional]` (usuário ainda presente)
+
+1. **Pré-checagens:**
+   - Em plan mode: pede para o usuário sair do plan mode antes (o modelo não consegue escrever o `AUSENTE.md` nele) e termina.
+   - `AUSENTE.md` com `status: ausente`: avisa que o modo já está ativo e só atualiza `tarefa` se houver instrução nova.
+   - `AUSENTE.md` com `status: retomando` (um `/voltei` ficou pela metade): pergunta se o usuário quer terminar o `/voltei` antes ou levar as dúvidas pendentes para a nova ausência.
+2. **Define a tarefa:** a instrução passada; senão, o trabalho em andamento na conversa; senão, pergunta ao usuário o que fazer.
+3. **Pergunta de triagem:** "Tenho N perguntas (~X min). Responder agora?" com as opções "Todas", "Só as 3 de maior impacto" e "Nenhuma, já estou saindo". N inclui as pendentes da conversa e as previsíveis da tarefa (escopo, abordagem, nomes, portões de aprovação que certamente virão). Se N = 0, pula para o passo 5.
+4. **Perguntas, uma por vez,** via `AskUserQuestion`, da de maior para a de menor impacto, com a recomendação primeiro. As não respondidas serão tratadas pela regra de risco quando surgirem.
+5. **Cria o `AUSENTE.md`** com `status: ausente`, `desde`, `tarefa`, a seção "Feito enquanto você estava fora" vazia e a seção "Dúvidas" vazia.
+6. **Exclusão local do git:** se o diretório estiver num repositório git, acrescenta `AUSENTE.md` ao arquivo indicado por `git rev-parse --git-path info/exclude` (funciona também em worktrees), sem duplicar a linha. Não altera nenhum arquivo versionado.
+7. **Confirma numa linha** ("Modo ausente ativo, seguindo com X") e começa a trabalhar no mesmo turno.
+
+### Regras durante a ausência
+
+- **Nada de perguntas no chat:** nem `AskUserQuestion` nem pergunta em texto.
+- **Registro imediato:** cada dúvida é escrita no `AUSENTE.md` no momento em que surge.
+- **Classificação por risco:**
+  - **`ESTACIONADA`** se a ação for irreversível ou externa:
+    - push, force-push ou merge na branch principal;
+    - deploy ou publicação de qualquer tipo;
+    - apagar arquivos, branches ou dados que não foram criados nesta sessão;
+    - escrever em banco de dados ou em ambiente compartilhado;
+    - enviar mensagens, e-mails, comentários, issues ou PRs;
+    - qualquer ação paga (APIs pagas, compras);
+    - alterar credenciais, permissões ou configuração global da máquina.
+  - **`PROVISÓRIA`** em todos os outros casos: segue com a opção recomendada e registra o que fez e como desfazer.
+  - **Na dúvida sobre a classificação:** `ESTACIONADA`.
+- **Portões de aprovação de outras skills** (aprovar design, spec ou plano; escolher o modo de execução) são sempre `ESTACIONADA`. O modelo pode preparar o artefato, mas nunca aprova no lugar do usuário.
+- **Continuar no que é independente:** após registrar uma `ESTACIONADA`, o modelo segue com todo trabalho que não depende dela. Só encerra quando não sobrar nada independente.
+- **Subagentes** não escrevem no `AUSENTE.md`. Se precisarem de uma decisão, devolvem a dúvida (com opções e recomendação) no relatório final, e o agente principal registra.
+- **Resumo:** a seção "Feito enquanto você estava fora" é atualizada a cada passo relevante (tarefa concluída, commit, bloqueio).
+- **O arquivo nunca entra em commit.**
+
+## 4. Hooks
+
+Um único script, `hooks/ausencia-hook.mjs`, sem dependências. Ele lê o JSON da entrada padrão, lê `AUSENTE.md` em `cwd` (se existir) e escreve no máximo um JSON na saída padrão. Sai sempre com código 0; qualquer exceção resulta em saída silenciosa (fail-open).
+
+**Organização para teste:** a lógica fica em funções puras exportadas, e a leitura de stdin e do arquivo só roda quando o módulo é executado como script.
+
+- `lerFrontmatter(conteudo)` → `{ status, desde, tarefa }` ou `null`.
+- `contarPendentes(conteudo)` → número de ocorrências de `**Resposta:** _pendente_`.
+- `decidir(entrada, conteudo)` → objeto de saída do hook ou `null`.
+
+**Regra geral:** se `conteudo` é `null` (sem arquivo) ou `status` não é `ausente`, `decidir` retorna `null` para todos os eventos. Única exceção: `SessionStart` (`startup|resume|clear`) com `status: retomando` injeta "Há um /voltei interrompido com {n} dúvida(s) pendente(s) no AUSENTE.md; sugira /voltei para terminar.", para o arquivo não ficar esquecido.
+
+| Evento (matcher) | Condição extra | Saída |
+|---|---|---|
+| `PreToolUse` (`AskUserQuestion`), agente principal | nenhuma | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Usuário ausente (AUSENTE.md, status: ausente). Não pergunte. Registre esta dúvida no AUSENTE.md como PROVISÓRIA ou ESTACIONADA, conforme a skill ausencia:ausente, e siga com o trabalho independente."}}` |
+| `PreToolUse` (`AskUserQuestion`), subagente | entrada tem `agent_id` | Mesmo formato, com o motivo: "Usuário ausente. Não pergunte. Devolva a dúvida, com opções e recomendação, no seu relatório final para o agente principal registrar." |
+| `SessionStart` (`compact`) | nenhuma | `additionalContext`: "Modo ausente ativo desde {desde}. Tarefa: {tarefa}. Releia o AUSENTE.md e siga a skill ausencia:ausente: nenhuma pergunta no chat, registre dúvidas no arquivo." |
+| `SessionStart` (`startup\|resume\|clear`) | nenhuma | `additionalContext`: "Há um AUSENTE.md com status ausente e {n} dúvida(s) pendente(s). O usuário provavelmente voltou: sugira /voltei." |
+| `UserPromptSubmit` | `prompt` não começa com `/voltei`, `/ausencia:voltei`, `/ausente` nem `/ausencia:ausente` | `additionalContext`: "O usuário está interagindo, mas o modo ausente continua ativo, com {n} dúvida(s) pendente(s) no AUSENTE.md. Responda ao que ele pediu e sugira /voltei." Não muda o status. |
+| `Stop` | `stop_hook_active` é falso | `{"decision":"block","reason":"Modo ausente: antes de encerrar, (1) se esta resposta tem pergunta ao usuário, mova-a para o AUSENTE.md; (2) se sobra trabalho que não depende de dúvida ESTACIONADA, continue; (3) atualize 'Feito enquanto você estava fora'. Se tudo estiver em ordem, pode encerrar."}` |
+| `Stop` | `stop_hook_active` é verdadeiro | `null` (deixa encerrar). |
+
+Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"hookEventName":"<evento>","additionalContext":"<texto>"}}`.
+
+**Registro em `hooks/hooks.json`:** formato exec, `"command": "node"` e `"args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ausencia-hook.mjs"]`, timeout de 5 s, para os quatro eventos com os matchers acima.
+
+**Convivência com outros plugins:** os hooks `Stop` do oh-my-claudecode também podem bloquear. O Claude Code limita a 8 continuações seguidas, e o hook deste plugin bloqueia no máximo uma vez por turno, então não há loop.
+
+## 5. `/voltei`
+
+1. **Lê o `AUSENTE.md`.** Se não existir: responde "Nenhum modo ausente ativo neste diretório" e termina.
+2. **Muda `status` para `retomando`.** A partir daí os hooks não agem e o `AskUserQuestion` volta a funcionar.
+3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo.
+4. **Pergunta uma a uma** via `AskUserQuestion`:
+   - **Ordem:** primeiro as `ESTACIONADA` (destravam trabalho), depois as `PROVISÓRIA`; dentro de cada grupo, em ordem de registro.
+   - **Opções:** as registradas, com a recomendada primeiro. Nas `PROVISÓRIA`, a primeira opção é "Manter o que foi feito ({opção aplicada})".
+   - **Gravação imediata:** cada resposta é escrita no campo **Resposta** antes da próxima pergunta, para sobreviver a uma compactação.
+   - **Dispensa:** se uma resposta torna outra dúvida sem sentido, ela é marcada `_dispensada pela Dn_` e pulada.
+   - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso.
+5. **Aplica as decisões:**
+   - `PROVISÓRIA` com escolha diferente da aplicada: desfaz e refaz conforme a escolha.
+   - `ESTACIONADA` aprovada: executa agora, passando pelas permissões normais.
+6. **Apaga o `AUSENTE.md`** só depois de todas as decisões aplicadas. A linha em `info/exclude` permanece (inofensiva e reaproveitada na próxima ausência).
+7. **Resume no chat** as decisões tomadas (o arquivo deixou de existir) e retoma a tarefa em modo normal.
+
+## 6. Casos de borda
+
+| Situação | Comportamento |
+|---|---|
+| `/ausente` em plan mode | Pede para sair do plan mode antes. |
+| `/ausente` com `status: ausente` | Avisa que já está ativo; atualiza `tarefa` se houver instrução nova. |
+| `/ausente` com `status: retomando` | Pergunta: terminar o `/voltei` antes ou levar as pendentes para a nova ausência (nesse caso, volta o status para `ausente`). |
+| `/voltei` sem arquivo | "Nenhum modo ausente ativo neste diretório." |
+| `/voltei` sem dúvidas | Mostra o resumo e apaga o arquivo. |
+| Frontmatter corrompido | Hooks não agem (fail-open). O `/voltei` lê as dúvidas pelo corpo do arquivo mesmo assim. |
+| Usuário apaga o arquivo à mão | O modo ausente acaba. |
+| Duas sessões no mesmo diretório | Ambas ficam em modo ausente (estado por diretório). Limitação documentada. |
+| Sem `node` no PATH | Hooks falham sem bloquear; plugin funciona só pelas instruções. Documentado. |
+| Usuário digita algo durante a ausência | `UserPromptSubmit` lembra o modelo de sugerir `/voltei`; o modo continua ativo. O `Stop` ainda bloqueia uma vez nesse turno (efeito aceito). |
+
+## 7. Testes
+
+- **Unitários** (`node --test`), escritos antes do código (TDD), sobre as funções puras:
+  - `lerFrontmatter`: sem frontmatter, `ausente`, `retomando`, valor desconhecido, conteúdo lixo, CRLF.
+  - `contarPendentes`: zero, várias, respostas preenchidas e dispensadas.
+  - `decidir`, para cada evento × estado (sem arquivo, `ausente`, `retomando`, corrompido): agente principal versus subagente no `PreToolUse`; cada matcher de `SessionStart`, incluindo a exceção de `retomando`; prompts que começam com os comandos do plugin versus outros no `UserPromptSubmit`; `stop_hook_active` verdadeiro e falso no `Stop`.
+  - Execução do script de ponta a ponta com stdin simulado: JSON válido na saída, código 0, e código 0 sem saída quando o stdin é inválido.
+- **Validação estrutural:** `claude plugin validate` no marketplace.
+- **Smoke test real** num repositório git descartável:
+  1. instalar pelo marketplace local;
+  2. rodar `/ausente` com uma tarefa de brinquedo que force uma dúvida de cada tipo;
+  3. confirmar que o `AskUserQuestion` é negado, que o arquivo é preenchido corretamente, que `AUSENTE.md` está em `info/exclude` e que o `Stop` bloqueia uma vez;
+  4. rodar `/voltei`, ver as perguntas uma a uma e o arquivo apagado no fim;
+  5. testar as formas curtas `/ausente` e `/voltei`.
