@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
-import { contarPendentes, lerFrontmatter, localizarAusente } from './logica.mjs';
+import { contarPendentes, decidir, lerFrontmatter, localizarAusente } from './logica.mjs';
 
 const FM = (status) => `---\nstatus: ${status}\ndesde: 2026-10-09 22:30\ntarefa: Tarefa X\n---\n\n# Ausente\n`;
 
@@ -96,4 +96,105 @@ test('localizarAusente: o diretório do projeto tem prioridade', () => {
 test('localizarAusente: diretório do projeto vazio é ignorado e sem arquivo retorna null', () => {
   assert.equal(localizarAusente(REPO, '', existeEm(join(REPO, '.git'))), null);
   assert.equal(localizarAusente(undefined, undefined, existeEm()), null);
+});
+const REGRAS = '/plugin/skills/ausente/SKILL.md';
+const ARQ = (status, pendentes = 1) =>
+  `---\nstatus: ${status}\ndesde: 2026-10-09 22:30\ntarefa: Tarefa X\n---\n\n# Ausente\n\n## Dúvidas\n` +
+  '\n- **Resposta:** _pendente_'.repeat(pendentes) +
+  '\n';
+const pre = (extra = {}) => ({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', ...extra });
+const sessao = (source) => ({ hook_event_name: 'SessionStart', source });
+const prompt = (texto) => ({ hook_event_name: 'UserPromptSubmit', prompt: texto });
+const stop = (ativo) => ({ hook_event_name: 'Stop', stop_hook_active: ativo });
+const EVENTOS = [pre(), sessao('startup'), sessao('compact'), prompt('oi'), stop(false)];
+
+test('decidir: sem arquivo, nada acontece', () => {
+  for (const entrada of EVENTOS) assert.equal(decidir(entrada, null, REGRAS), null);
+});
+
+test('decidir: status desconhecido ou frontmatter corrompido, nada acontece', () => {
+  for (const entrada of EVENTOS) {
+    assert.equal(decidir(entrada, ARQ('pausado'), REGRAS), null);
+    assert.equal(decidir(entrada, '# Ausente\nstatus: ausente\n', REGRAS), null);
+  }
+});
+
+test('decidir: entrada nula ou evento desconhecido retorna null', () => {
+  assert.equal(decidir(null, ARQ('ausente'), REGRAS), null);
+  assert.equal(decidir({ hook_event_name: 'PostToolUse' }, ARQ('ausente'), REGRAS), null);
+});
+
+test('PreToolUse: nega o AskUserQuestion do agente principal apontando as regras', () => {
+  const saida = decidir(pre(), ARQ('ausente'), REGRAS).hookSpecificOutput;
+  assert.equal(saida.hookEventName, 'PreToolUse');
+  assert.equal(saida.permissionDecision, 'deny');
+  assert.match(saida.permissionDecisionReason, /Registre esta dúvida no AUSENTE\.md como PROVISÓRIA ou ESTACIONADA/);
+  assert.ok(saida.permissionDecisionReason.includes(REGRAS));
+});
+
+test('PreToolUse: sem caminho das regras, a mensagem não mostra undefined', () => {
+  const motivo = decidir(pre(), ARQ('ausente')).hookSpecificOutput.permissionDecisionReason;
+  assert.ok(!motivo.includes('undefined'));
+});
+
+test('PreToolUse: subagente recebe instrução de devolver no relatório final', () => {
+  const saida = decidir(pre({ agent_id: 'a1', agent_type: 'executor' }), ARQ('ausente'), REGRAS).hookSpecificOutput;
+  assert.equal(saida.permissionDecision, 'deny');
+  assert.match(saida.permissionDecisionReason, /relatório final/);
+});
+
+test('PreToolUse: outras ferramentas e status retomando passam', () => {
+  assert.equal(decidir(pre({ tool_name: 'Bash' }), ARQ('ausente'), REGRAS), null);
+  assert.equal(decidir(pre(), ARQ('retomando'), REGRAS), null);
+});
+
+test('SessionStart compact: relembra o modo com desde, tarefa e regras', () => {
+  const saida = decidir(sessao('compact'), ARQ('ausente'), REGRAS).hookSpecificOutput;
+  assert.equal(saida.hookEventName, 'SessionStart');
+  assert.match(saida.additionalContext, /Modo ausente ativo desde 2026-10-09 22:30\. Tarefa: Tarefa X\./);
+  assert.ok(saida.additionalContext.includes(REGRAS));
+});
+
+test('SessionStart startup, resume e clear: sugere /voltei com a contagem', () => {
+  for (const source of ['startup', 'resume', 'clear']) {
+    const texto = decidir(sessao(source), ARQ('ausente', 2), REGRAS).hookSpecificOutput.additionalContext;
+    assert.match(texto, /2 dúvidas pendentes/, source);
+    assert.match(texto, /sugira \/voltei/, source);
+  }
+});
+
+test('SessionStart com retomando: avisa o /voltei interrompido, exceto na compactação', () => {
+  const texto = decidir(sessao('startup'), ARQ('retomando', 1), REGRAS).hookSpecificOutput.additionalContext;
+  assert.match(texto, /\/voltei interrompido com 1 dúvida pendente/);
+  assert.equal(decidir(sessao('compact'), ARQ('retomando'), REGRAS), null);
+});
+
+test('mensagens: singular e plural da contagem', () => {
+  const texto = (n) => decidir(sessao('startup'), ARQ('ausente', n), REGRAS).hookSpecificOutput.additionalContext;
+  assert.match(texto(0), /0 dúvidas pendentes/);
+  assert.match(texto(1), /1 dúvida pendente\./);
+});
+
+test('UserPromptSubmit: lembra do /voltei quando o usuário digita outra coisa', () => {
+  for (const texto of ['oi, tudo certo?', 'pode rodar /voltei?', '/volteiX', '/outra-coisa']) {
+    const saida = decidir(prompt(texto), ARQ('ausente'), REGRAS).hookSpecificOutput;
+    assert.equal(saida.hookEventName, 'UserPromptSubmit', texto);
+    assert.match(saida.additionalContext, /sugira \/voltei/, texto);
+  }
+});
+
+test('UserPromptSubmit: silencioso para os comandos do plugin', () => {
+  for (const texto of ['/voltei', '/ausencia:voltei', '/ausente faça X', '  /ausencia:ausente', '/voltei\n']) {
+    assert.equal(decidir(prompt(texto), ARQ('ausente'), REGRAS), null, texto);
+  }
+});
+
+test('Stop: bloqueia uma vez com o checklist', () => {
+  for (const ativo of [false, undefined]) {
+    const saida = decidir(stop(ativo), ARQ('ausente'), REGRAS);
+    assert.equal(saida.decision, 'block');
+    assert.match(saida.reason, /^Modo ausente: antes de encerrar/);
+  }
+  assert.equal(decidir(stop(true), ARQ('ausente'), REGRAS), null);
+  assert.equal(decidir(stop(false), ARQ('retomando'), REGRAS), null);
 });

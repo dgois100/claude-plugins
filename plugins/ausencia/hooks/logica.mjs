@@ -51,3 +51,67 @@ export function localizarAusente(cwd, projectDir, existe) {
   }
   return null;
 }
+
+const COMANDO_DO_PLUGIN = /^\s*\/(?:ausencia:)?(?:ausente|voltei)(?:\s|$)/;
+
+const MSG_STOP =
+  "Modo ausente: antes de encerrar, (1) se esta resposta tem pergunta ao usuário, mova-a para o AUSENTE.md; " +
+  "(2) se sobra trabalho que não depende de dúvida ESTACIONADA, continue; " +
+  "(3) atualize 'Feito enquanto você estava fora'. Se tudo estiver em ordem, pode encerrar.";
+
+const MSG_SUBAGENTE =
+  'Usuário ausente. Não pergunte. Devolva a dúvida, com opções e recomendação, ' +
+  'no seu relatório final para o agente principal registrar.';
+
+const pendentes = (n) => `${n} dúvida${n === 1 ? '' : 's'} pendente${n === 1 ? '' : 's'}`;
+const skill = (caminhoRegras) => `a skill ausencia:ausente${caminhoRegras ? ` (${caminhoRegras})` : ''}`;
+const contexto = (evento, texto) => ({ hookSpecificOutput: { hookEventName: evento, additionalContext: texto } });
+
+export function decidir(entrada, conteudo, caminhoRegras) {
+  const frontmatter = lerFrontmatter(conteudo);
+  if (!entrada || !frontmatter) return null;
+  const evento = entrada.hook_event_name;
+  const n = contarPendentes(conteudo);
+
+  if (frontmatter.status === 'retomando') {
+    if (evento === 'SessionStart' && entrada.source !== 'compact') {
+      return contexto('SessionStart', `Há um /voltei interrompido com ${pendentes(n)} no AUSENTE.md; sugira /voltei para terminar.`);
+    }
+    return null;
+  }
+  if (frontmatter.status !== 'ausente') return null;
+
+  switch (evento) {
+    case 'PreToolUse':
+      if (entrada.tool_name !== 'AskUserQuestion') return null;
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: entrada.agent_id
+            ? MSG_SUBAGENTE
+            : `Usuário ausente (AUSENTE.md, status: ausente). Não pergunte. Registre esta dúvida no AUSENTE.md como PROVISÓRIA ou ESTACIONADA, conforme ${skill(caminhoRegras)}, e siga com o trabalho independente.`,
+        },
+      };
+    case 'SessionStart':
+      if (entrada.source === 'compact') {
+        return contexto(
+          'SessionStart',
+          `Modo ausente ativo desde ${frontmatter.desde ?? '(sem data)'}. Tarefa: ${frontmatter.tarefa ?? '(não informada)'}. ` +
+            `Releia o AUSENTE.md e siga ${skill(caminhoRegras)}: nenhuma pergunta no chat, registre dúvidas no arquivo.`,
+        );
+      }
+      return contexto('SessionStart', `Há um AUSENTE.md com status ausente e ${pendentes(n)}. O usuário provavelmente voltou: sugira /voltei.`);
+    case 'UserPromptSubmit':
+      if (COMANDO_DO_PLUGIN.test(entrada.prompt ?? '')) return null;
+      return contexto(
+        'UserPromptSubmit',
+        `O usuário está interagindo, mas o modo ausente continua ativo, com ${pendentes(n)} no AUSENTE.md. Responda ao que ele pediu e sugira /voltei.`,
+      );
+    case 'Stop':
+      if (entrada.stop_hook_active) return null;
+      return { decision: 'block', reason: MSG_STOP };
+    default:
+      return null;
+  }
+}
