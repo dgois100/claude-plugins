@@ -8,7 +8,7 @@ const semAspas = (valor) => valor.replace(/^(["'])(.*)\1$/, '$2');
 
 export function lerFrontmatter(conteudo) {
   if (typeof conteudo !== 'string') return null;
-  const bloco = conteudo.replace(/^﻿/, '').match(FRONTMATTER);
+  const bloco = conteudo.replace(/^\uFEFF/, '').match(FRONTMATTER);
   if (!bloco) return null;
   const campos = {};
   for (const linha of bloco[1].split(/\r?\n/)) {

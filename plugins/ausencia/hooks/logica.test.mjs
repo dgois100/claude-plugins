@@ -14,7 +14,7 @@ test('lerFrontmatter: aceita CRLF', () => {
 });
 
 test('lerFrontmatter: aceita BOM', () => {
-  assert.equal(lerFrontmatter('﻿' + FM('retomando')).status, 'retomando');
+  assert.equal(lerFrontmatter('\uFEFF' + FM('retomando')).status, 'retomando');
 });
 
 test('lerFrontmatter: status tolera aspas e texto depois do primeiro termo', () => {
