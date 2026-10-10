@@ -1,7 +1,7 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,16 @@ function rodar(entrada, env = {}) {
     input,
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: '', ...env },
+  });
+}
+
+// Como rodar(), mas sem as variáveis de ambiente cujo nome, em minúsculas, está em `fora`.
+function rodarSem(entrada, fora, extra = {}) {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([nome]) => !fora.includes(nome.toLowerCase())));
+  return spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(entrada),
+    encoding: 'utf8',
+    env: { ...env, CLAUDE_PROJECT_DIR: '', ...extra },
   });
 }
 
@@ -93,6 +103,43 @@ test('hook: ignora um AUSENTE.md versionado no repositório', () => {
     assert.equal(r.status, 0, entrada.hook_event_name);
     assert.equal(r.stdout, '', entrada.hook_event_name);
   }
+});
+
+test('hook: sem git no PATH, um AUSENTE.md versionado conta como não versionado', () => {
+  const repo = join(base, 'sem-git');
+  mkdirSync(repo);
+  const git = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+  assert.equal(git('init', '-q').status, 0);
+  writeFileSync(join(repo, 'AUSENTE.md'), ARQ('ausente'));
+  assert.equal(git('add', '-f', 'AUSENTE.md').status, 0);
+  const vazia = join(base, 'path-vazio');
+  mkdirSync(vazia);
+  const r = rodarSem({ hook_event_name: 'Stop', cwd: repo, stop_hook_active: false }, ['path'], { PATH: vazia });
+  assert.equal(r.status, 0);
+  assert.equal(JSON.parse(r.stdout).decision, 'block');
+});
+
+test('hook: não roda um git.exe plantado ao lado do AUSENTE.md', () => {
+  const pasta = join(base, 'plantado');
+  mkdirSync(pasta);
+  writeFileSync(join(pasta, 'AUSENTE.md'), ARQ('ausente'));
+  // uma cópia do node chamada git.exe; se ela rodar, o preload deixa um marcador e sai com 0 ("versionado")
+  copyFileSync(process.execPath, join(pasta, 'git.exe'));
+  const marcador = join(pasta, 'rodou.txt');
+  const preload = join(pasta, 'preload.cjs');
+  writeFileSync(
+    preload,
+    `if (require('node:path').basename(process.execPath).toLowerCase() === 'git.exe') {\n` +
+      `  require('node:fs').writeFileSync(${JSON.stringify(marcador)}, 'x');\n` +
+      '  process.exit(0);\n' +
+      '}\n',
+  );
+  // sem NoDefaultCurrentDirectoryInExePath, o Windows procura o executável primeiro no cwd do processo
+  const r = rodarSem({ hook_event_name: 'Stop', cwd: pasta, stop_hook_active: false }, ['nodefaultcurrentdirectoryinexepath'], {
+    NODE_OPTIONS: `--require ${JSON.stringify(preload)}`,
+  });
+  assert.equal(existsSync(marcador), false, 'o git.exe plantado rodou');
+  assert.equal(JSON.parse(r.stdout).decision, 'block');
 });
 
 test('hook: entrada vazia, inválida, nula ou sem campos sai com 0 e sem saída', () => {
@@ -180,7 +227,8 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'Se houver algo a executar (uma ESTACIONADA aprovada ou uma PROVISÓRIA com outra escolha), antes de executar qualquer coisa nesta fase',
     '1. Mostre no chat os comandos exatos que vai rodar',
     'Destaque os que forem irreversíveis ou externos',
-    '2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Executar" ou "Parar por agora"',
+    '2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Parar por agora" ou "Executar", nesta ordem',
+    'ou de outra forma de um comando mostrado',
     '3. Só com "Executar" rode o que mostrou',
     'não o rode: pare e trate como falha ao aplicar',
     'ou com um "Other" que não seja um sim claro, não rode nada',
@@ -217,6 +265,8 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     '"Continuar mesmo assim": siga as fases normalmente, sem marcar recomendação na fase 4',
     'trate como "Encerrar sem aplicar nada"',
     'nenhum rótulo leva "(Recomendado)"',
+    'Se o hook negar esta pergunta',
+    'git restore AUSENTE.md',
   ];
   for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
   assert.ok(voltei.indexOf('registro, não autorização') < voltei.indexOf('## Fase 1'), 'regra de registro antes da fase 1');
@@ -225,7 +275,13 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
   assert.ok(voltei.indexOf('git ls-files --error-unmatch') < voltei.indexOf('## Fase 2'), 'versionado conferido na fase 1');
 
   // portões do /ausente: um AUSENTE.md versionado ou que não é do plugin nunca é usado nem sobrescrito
-  for (const trecho of ['git ls-files --error-unmatch -- AUSENTE.md', 'Este repositório versiona um AUSENTE.md', 'o arquivo não foi criado pelo /ausente']) {
+  for (const trecho of [
+    'git ls-files --error-unmatch -- AUSENTE.md',
+    'mesmo que o arquivo não exista mais no disco',
+    'Este repositório versiona um AUSENTE.md',
+    'git rm --cached AUSENTE.md',
+    'não parece ter sido criado pelo /ausente',
+  ]) {
     assert.equal(ausente.split(trecho).length - 1, 1, trecho);
   }
   assert.ok(ausente.indexOf('git ls-files --error-unmatch') < ausente.indexOf('leia o campo `status`'), 'versionado conferido antes do status');

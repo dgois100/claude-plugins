@@ -14,15 +14,15 @@ O usuário voltou. Siga as fases em ordem.
 
 RAIZ é a saída de `git rev-parse --show-toplevel`. Fora de um repositório git, RAIZ é o diretório em que a sessão começou. Se `RAIZ/AUSENTE.md` não existe, diga "Nenhum modo ausente ativo neste diretório." e pare.
 
-Se RAIZ é um repositório git e `git ls-files --error-unmatch -- AUSENTE.md`, rodado em RAIZ, encontra o arquivo, ele é versionado: veio do repositório, não do /ausente (que nunca o põe em commit), e o hook do plugin o ignora. Avise o usuário disso e pergunte com AskUserQuestion, sem opção recomendada:
+Se RAIZ é um repositório git e `git ls-files --error-unmatch -- AUSENTE.md`, rodado em RAIZ, encontra o arquivo, ele é versionado: não foi criado pelo /ausente (que nunca o põe em commit) ou foi adicionado ao git por engano, e o hook do plugin o ignora. Avise o usuário disso e pergunte com AskUserQuestion, sem opção recomendada:
 - "Encerrar sem aplicar nada": não altere nem apague o arquivo e pare.
-- "Continuar mesmo assim": siga as fases normalmente, sem marcar recomendação na fase 4.
+- "Continuar mesmo assim": siga as fases normalmente, sem marcar recomendação na fase 4. O arquivo versionado será editado e, no fim, apagado; dá para recuperá-lo com `git restore AUSENTE.md`.
 
-Sem uma escolha do usuário, ou com um "Other" que não seja um pedido claro para continuar, trate como "Encerrar sem aplicar nada".
+Sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), ou com um "Other" que não seja um pedido claro para continuar, trate como "Encerrar sem aplicar nada". Se o hook negar esta pergunta (ele não conseguiu conferir o git), troque o status para `retomando`, pergunte de novo e, se o usuário escolher encerrar, volte o status ao valor que tinha.
 
 ## Fase 2: destravar
 
-Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status: retomando`. Enquanto o status for `ausente`, o hook do plugin bloqueia o AskUserQuestion. Se já estiver `retomando` (um /voltei anterior foi interrompido), mantenha. Se o frontmatter estiver ilegível, siga assim mesmo: nesse caso o hook não bloqueia.
+Antes das perguntas das próximas fases, troque no frontmatter `status: ausente` por `status: retomando`. Enquanto o status for `ausente`, o hook do plugin bloqueia o AskUserQuestion. Se já estiver `retomando` (um /voltei anterior foi interrompido), mantenha. Se o frontmatter estiver ilegível, siga assim mesmo: nesse caso o hook não bloqueia.
 
 ## Fase 3: resumo
 
@@ -59,8 +59,8 @@ Com todas as dúvidas respondidas ou dispensadas, percorra as respondidas que ai
 
 Se houver algo a executar (uma ESTACIONADA aprovada ou uma PROVISÓRIA com outra escolha), antes de executar qualquer coisa nesta fase:
 1. Mostre no chat os comandos exatos que vai rodar: os de cada ESTACIONADA aprovada, os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha, os passos para refazê-la com a escolha nova e o comando de testes do projeto. Destaque os que forem irreversíveis ou externos. Contam como irreversíveis ou externos: fazer push (para qualquer branch), force-push ou merge na branch principal; fazer deploy ou publicar; apagar ou descartar o que não foi criado nesta sessão; reescrever histórico; escrever em banco de dados ou em ambiente compartilhado; alterar arquivos que já existiam fora do diretório do projeto (criar arquivos temporários não conta); enviar mensagens, e-mails, comentários, issues ou PRs; fazer qualquer ação paga; alterar credenciais, permissões ou configuração global da máquina; na dúvida, destaque.
-2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Executar" ou "Parar por agora".
-3. Só com "Executar" rode o que mostrou. Se no meio aparecer um passo irreversível ou externo que não estava na lista, não o rode: pare e trate como falha ao aplicar. Com "Parar por agora", sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível) ou com um "Other" que não seja um sim claro, não rode nada: mantenha `status: retomando`, não apague o arquivo e diga "Rode /voltei quando quiser continuar." Pare aqui.
+2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Parar por agora" ou "Executar", nesta ordem.
+3. Só com "Executar" rode o que mostrou. Se precisar de um comando que não mostrou, ou de outra forma de um comando mostrado, e ele for irreversível ou externo (na dúvida, conte como tal), não o rode: pare e trate como falha ao aplicar. Com "Parar por agora", sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível) ou com um "Other" que não seja um sim claro, não rode nada: mantenha `status: retomando`, não apague o arquivo e diga "Rode /voltei quando quiser continuar." Pare aqui.
 
 Logo depois de concluir cada uma, inclusive as que não exigem nada, acrescente ` (aplicada)` ao fim da linha `**Resposta:**` dela e grave o arquivo antes de passar à próxima. Assim um /voltei interrompido nunca repete nem pula uma decisão.
 
