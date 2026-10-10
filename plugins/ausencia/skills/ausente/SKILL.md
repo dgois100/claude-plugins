@@ -34,7 +34,7 @@ A tarefa do período é, nesta ordem de preferência: a instrução acima; senã
 3. Se a lista estiver vazia, vá para a fase 4.
 4. Faça a triagem com AskUserQuestion: "Tenho N perguntas antes de você sair (cerca de X min). Responder agora?", com as opções "Todas (Recomendado)", "Só as 3 de maior impacto" e "Nenhuma, já estou saindo". X é N dividido por 2, arredondado para cima.
 5. Faça as perguntas escolhidas uma por vez, com AskUserQuestion: de 2 a 4 opções, a recomendada primeiro com "(Recomendado)" no rótulo e o trade-off na descrição. Se o usuário escrever algo como "chega" ou "vou sair", pare de perguntar.
-6. As respostas são decisões do usuário: siga-as sem registrar no arquivo. As perguntas que não foram feitas não vão para o arquivo agora; quando surgirem de fato, siga a fase 5.
+6. As respostas são decisões do usuário: siga-as sem transformá-las em dúvidas. Na fase 4, registre cada uma em uma linha na seção "Decisões tomadas antes de sair" (`- <pergunta>: <resposta>`), para que sobrevivam a uma compactação. As perguntas que não foram feitas não vão para o arquivo agora; quando surgirem de fato, siga a fase 5.
 
 ## Fase 4: ativar
 
@@ -50,12 +50,14 @@ A tarefa do período é, nesta ordem de preferência: a instrução acima; senã
 
    # Ausente
 
+   ## Decisões tomadas antes de sair
+
    ## Feito enquanto você estava fora
 
    ## Dúvidas
    ```
 
-   Se o arquivo já existia com `status: retomando` (fase 1), não o recrie: troque o status para `ausente`, atualize `desde` e `tarefa` e mantenha as seções.
+   Se o arquivo já existia com `status: retomando` (fase 1), não o recrie: troque o status para `ausente`, atualize `desde` e `tarefa`, mantenha as seções (crie "Decisões tomadas antes de sair" se faltar) e acrescente nela as respostas da fase 3.
 3. Se RAIZ é um repositório git, garanta que o arquivo nunca entre em commit, sem alterar arquivos versionados:
 
    ```bash

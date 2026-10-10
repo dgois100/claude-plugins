@@ -69,6 +69,9 @@ tarefa: Implementar o plano X a partir da Task 3
 
 # Ausente
 
+## Decisões tomadas antes de sair
+- Escopo: só as Tasks 3 a 6
+
 ## Feito enquanto você estava fora
 - Task 3 concluída (commit abc123)
 - Task 4 parcial: falta a validação do formulário (aguarda D1)
@@ -101,7 +104,8 @@ Regras do formato:
   - `ESTACIONADA`: ação irreversível ou externa. Nada foi feito; o campo "Travado esperando isto" diz o que ficou parado.
   - `PROVISÓRIA`: decisão reversível. O modelo seguiu com a recomendada; os campos "Feito com a opção N" e "Como desfazer" dizem o que foi feito e como reverter.
 - **Opções:** de 2 a 4, com exatamente uma marcada "(recomendada)", listada primeiro. Mesmo formato do `AskUserQuestion`, para virar pergunta direto no retorno.
-- **Resposta:** `_pendente_` até ser respondida no `/voltei`. Valores possíveis depois: o texto da escolha, ou `_dispensada pela Dn_`.
+- **Resposta:** `_pendente_` até ser respondida no `/voltei`. Valores possíveis depois: o texto da escolha, ou `_dispensada pela Dn_`. Quando o `/voltei` aplica a decisão, acrescenta ` (aplicada)` ao fim da linha.
+- **Decisões tomadas antes de sair:** seção com uma linha por resposta dada no `/ausente` (`- <pergunta>: <resposta>`), para sobreviver a uma compactação. O hook não lê essa seção.
 - **Leitura pelo hook:** o hook só lê o frontmatter. Bloqueia apenas quando `status` é exatamente `ausente`. Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não age (fail-open). O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
 
 ## 3. `/ausente` e o comportamento durante a ausência
@@ -114,8 +118,8 @@ Regras do formato:
    - `AUSENTE.md` com `status: retomando` (um `/voltei` ficou pela metade): pergunta se o usuário quer terminar o `/voltei` antes ou levar as dúvidas pendentes para a nova ausência.
 2. **Define a tarefa:** a instrução passada; senão, o trabalho em andamento na conversa; senão, pergunta ao usuário o que fazer.
 3. **Pergunta de triagem:** "Tenho N perguntas (~X min). Responder agora?" com as opções "Todas", "Só as 3 de maior impacto" e "Nenhuma, já estou saindo". N inclui as pendentes da conversa e as previsíveis da tarefa (escopo, abordagem, nomes, portões de aprovação que certamente virão). Se N = 0, pula para o passo 5.
-4. **Perguntas, uma por vez,** via `AskUserQuestion`, da de maior para a de menor impacto, com a recomendação primeiro. As não respondidas serão tratadas pela regra de risco quando surgirem.
-5. **Cria o `AUSENTE.md`** com `status: ausente`, `desde`, `tarefa`, a seção "Feito enquanto você estava fora" vazia e a seção "Dúvidas" vazia.
+4. **Perguntas, uma por vez,** via `AskUserQuestion`, da de maior para a de menor impacto, com a recomendação primeiro. As não respondidas serão tratadas pela regra de risco quando surgirem. As respondidas são registradas no passo 5, na seção "Decisões tomadas antes de sair".
+5. **Cria o `AUSENTE.md`** com `status: ausente`, `desde`, `tarefa`, a seção "Decisões tomadas antes de sair" com as respostas do passo 4, a seção "Feito enquanto você estava fora" vazia e a seção "Dúvidas" vazia.
 6. **Exclusão local do git:** se o diretório estiver num repositório git, acrescenta `AUSENTE.md` ao arquivo indicado por `git rev-parse --git-path info/exclude` (funciona também em worktrees), sem duplicar a linha. Não altera nenhum arquivo versionado.
 7. **Confirma numa linha** ("Modo ausente ativo, seguindo com X") e começa a trabalhar no mesmo turno.
 
@@ -172,14 +176,14 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
 
 1. **Lê o `AUSENTE.md`.** Se não existir: responde "Nenhum modo ausente ativo neste diretório" e termina.
 2. **Muda `status` para `retomando`.** A partir daí os hooks não agem e o `AskUserQuestion` volta a funcionar.
-3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo.
+3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo. Se não houver pendentes, mas houver respondidas ainda sem ` (aplicada)` (um `/voltei` anterior parou no passo 5), vai direto ao passo 5.
 4. **Pergunta uma a uma** via `AskUserQuestion`:
    - **Ordem:** primeiro as `ESTACIONADA` (destravam trabalho), depois as `PROVISÓRIA`; dentro de cada grupo, em ordem de registro.
    - **Opções:** as registradas, com a recomendada primeiro. Nas `PROVISÓRIA`, a primeira opção é "Manter o que foi feito ({opção aplicada})".
    - **Gravação imediata:** cada resposta é escrita no campo **Resposta** antes da próxima pergunta, para sobreviver a uma compactação.
    - **Dispensa:** se uma resposta torna outra dúvida sem sentido, ela é marcada `_dispensada pela Dn_` e pulada.
    - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso.
-5. **Aplica as decisões:**
+5. **Aplica as decisões** que ainda não têm ` (aplicada)`, marcando cada uma com esse sufixo logo depois de concluí-la, para um `/voltei` interrompido nunca repetir nem pular uma decisão:
    - `PROVISÓRIA` com escolha diferente da aplicada: desfaz e refaz conforme a escolha.
    - `ESTACIONADA` aprovada: executa agora, passando pelas permissões normais.
 6. **Apaga o `AUSENTE.md`** só depois de todas as decisões aplicadas. A linha em `info/exclude` permanece (inofensiva e reaproveitada na próxima ausência).

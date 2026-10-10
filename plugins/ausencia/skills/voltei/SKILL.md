@@ -18,7 +18,7 @@ Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status:
 
 ## Fase 3: resumo
 
-Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Se N for 0, vá para a fase 6.
+Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Conte também A, as respondidas que ainda não foram aplicadas: linha `**Resposta:**` preenchida, sem `_dispensada pela D<n>_` e sem o sufixo ` (aplicada)`; elas sobram de um /voltei anterior que parou na fase 5. Se N for 0 e A for maior que 0, vá para a fase 5. Se N e A forem 0, vá para a fase 6.
 
 ## Fase 4: perguntas, uma por vez
 
@@ -33,11 +33,13 @@ Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a co
 
 ## Fase 5: aplicar
 
-Com todas as dúvidas respondidas ou dispensadas:
+Com todas as dúvidas respondidas ou dispensadas, percorra as respondidas que ainda não têm o sufixo ` (aplicada)`, na mesma ordem da fase 4. As que já têm o sufixo foram aplicadas por um /voltei anterior: não as repita.
 - PROVISÓRIA mantida: nada a fazer.
 - PROVISÓRIA com outra escolha: desfaça seguindo "Como desfazer" e refaça com a escolha. Rode os testes do projeto, se houver.
 - ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo.
 - ESTACIONADA recusada ou adiada: nada a fazer; registre no resumo final.
+
+Logo depois de concluir cada uma, inclusive as que não exigem nada, acrescente ` (aplicada)` ao fim da linha `**Resposta:**` dela e grave o arquivo antes de passar à próxima. Assim um /voltei interrompido nunca repete nem pula uma decisão.
 
 Se algo falhar ao aplicar, pare, mostre o erro e **não apague o arquivo**: ele ainda é o registro das decisões.
 
