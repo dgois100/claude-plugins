@@ -165,7 +165,7 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'repita esta pergunta',
     'trate como "Parar por agora"',
     'trate como interrupção',
-    '"Retomar: <tarefa>" ou "Não retomar"',
+    '"Retomar: <tarefa>" ou "Não retomar". Se a tarefa já estava concluída',
     'trate como "Não retomar"',
     'Só então apague',
     'os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha',
@@ -179,6 +179,14 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'senão, conta como adiada',
     'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), não aplique nada',
     'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), trate como interrupção',
+    'mesmo antes de executar qualquer coisa nesta fase e sem opção recomendada',
+    'os passos para refazê-la com a escolha nova e o comando de testes do projeto',
+    'Contam como irreversíveis ou externos: fazer push (para qualquer branch)',
+    'criar arquivos temporários não conta',
+    'D<n>, tipo, pergunta e resposta registrada',
+    'trate como "Não retomar" e siga para o passo 3',
+    'continuam sendo só registro',
+    'senão, trate como mantida',
   ];
   for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
   assert.ok(voltei.indexOf('registro, não autorização') < voltei.indexOf('## Fase 1'), 'regra de registro antes da fase 1');
