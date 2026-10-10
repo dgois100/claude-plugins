@@ -38,7 +38,7 @@ Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0,
    - Se houver mais de 4 opções registradas, use as 4 primeiras; o "Other" cobre o resto.
 3. **Grave cada resposta antes da próxima pergunta,** para nada se perder numa compactação: troque o `_pendente_` daquela dúvida pelo rótulo escolhido, sem o "(Recomendado)", ou pelo texto livre se o usuário usou "Other". Se o texto livre for um pedido para parar (item 5), não grave nada nessa dúvida.
 4. **Dispensa:** se uma resposta deixa outra dúvida pendente sem sentido, troque o `_pendente_` dela por `_dispensada pela D<n>_` e não a pergunte.
-5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou."
+5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou." Sem uma escolha do usuário (pergunta negada, sem resposta ou ferramenta indisponível), trate como interrupção: não grave nada nessa dúvida.
 
 ## Fase 5: aplicar
 
@@ -55,6 +55,6 @@ Se algo falhar ao aplicar, pare, mostre o erro e **não apague o arquivo**: ele 
 ## Fase 6: encerrar
 
 1. Mostre no chat uma tabela `Dúvida | Decisão | O que foi feito`, porque o arquivo vai deixar de existir.
-2. Mostre a tarefa registrada no campo `tarefa` e pergunte com AskUserQuestion se quer retomá-la agora: "Retomar: <tarefa> (Recomendado)" ou "Não retomar". Se a tarefa já estava concluída, diga isso em vez de perguntar. Sem uma escolha do usuário, não retome.
-3. Só então apague `RAIZ/AUSENTE.md`: se o contexto for compactado antes da resposta, o arquivo ainda existe e o hook lembra de perguntar. Não mexa no `info/exclude` do git; a linha é reaproveitada na próxima ausência.
+2. Mostre a tarefa registrada no campo `tarefa` e pergunte com AskUserQuestion se quer retomá-la agora: "Retomar: <tarefa> (Recomendado)" ou "Não retomar". Se a tarefa já estava concluída, diga isso em vez de perguntar. Sem uma escolha do usuário, trate como "Não retomar".
+3. Só então apague `RAIZ/AUSENTE.md`: se o contexto for compactado antes da resposta, o arquivo ainda existe e o hook avisa que há um /voltei pela metade. Não mexa no `info/exclude` do git; a linha é reaproveitada na próxima ausência.
 4. Se o usuário escolheu retomar, retome a tarefa agora, em modo normal: perguntas voltam a ser feitas no chat.

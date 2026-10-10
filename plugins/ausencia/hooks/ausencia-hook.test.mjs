@@ -150,14 +150,20 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
   assert.ok(voltei.includes(' (aplicada)'));
   assert.ok(voltei.includes('_dispensada pela D'));
 
-  // portões de confirmação do /voltei: decisões antigas e retomada da tarefa
-  assert.ok(voltei.includes('"Aplicar como estão (Recomendado)"'));
-  assert.ok(voltei.includes('"Parar por agora"'));
-  assert.ok(voltei.includes('Se a resposta vier em "Other"'));
-  assert.ok(voltei.includes('tinham dispensado'));
-  assert.ok(voltei.includes('Sem uma escolha do usuário'));
-  assert.ok(voltei.includes('Retomar: <tarefa>'));
-  assert.ok(voltei.includes('Só então apague'));
+  // portões de confirmação do /voltei: cada regra precisa aparecer exatamente uma vez
+  const portoes = [
+    '"Aplicar como estão (Recomendado)"',
+    '"Parar por agora": mantenha',
+    'tinham dispensado',
+    'Se a resposta vier em "Other"',
+    'repita esta pergunta',
+    'trate como "Parar por agora"',
+    'trate como interrupção',
+    'Retomar: <tarefa>',
+    'trate como "Não retomar"',
+    'Só então apague',
+  ];
+  for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
 
   // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
   const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);

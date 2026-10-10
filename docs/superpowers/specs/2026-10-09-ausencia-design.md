@@ -189,12 +189,12 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
    - **Opções:** as registradas, com a recomendada primeiro. Nas `PROVISÓRIA`, a primeira opção é "Manter: {opção aplicada}"; uma resposta que começa com "Manter" conta como mantida.
    - **Gravação imediata:** cada resposta é escrita no campo **Resposta** antes da próxima pergunta (o rótulo, sem "(Recomendado)"), para sobreviver a uma compactação. Um pedido para parar digitado em "Other" não é gravado como resposta.
    - **Dispensa:** se uma resposta torna outra dúvida sem sentido, ela é marcada `_dispensada pela Dn_` e pulada.
-   - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso, e, se o contexto for compactado no meio do `/voltei`, o `SessionStart` manda o modelo perguntar se o usuário quer continuar, em vez de retomar sozinho.
+   - **Interrupção:** se o usuário responder "chega" (via "Other"), as restantes continuam `_pendente_`, o status continua `retomando` e o fluxo termina. Sem uma escolha do usuário (pergunta negada, sem resposta ou ferramenta indisponível), vale o mesmo: nada é gravado nessa dúvida. Um novo `/voltei` retoma da primeira pendente; ao abrir uma nova sessão, o `SessionStart` lembra disso, e, se o contexto for compactado no meio do `/voltei`, o `SessionStart` manda o modelo perguntar se o usuário quer continuar, em vez de retomar sozinho.
 5. **Aplica as decisões** que ainda não têm ` (aplicada)`, marcando cada uma com esse sufixo logo depois de concluí-la, para um `/voltei` interrompido nunca repetir nem pular uma decisão:
    - `PROVISÓRIA` com escolha diferente da aplicada: desfaz e refaz conforme a escolha.
    - `ESTACIONADA` aprovada: executa agora, passando pelas permissões normais.
-6. **Resume no chat** as decisões tomadas (o arquivo vai deixar de existir), mostra a tarefa registrada e pergunta se deve retomá-la; se ela já estava concluída, só avisa. Sem uma escolha do usuário, não retoma.
-7. **Apaga o `AUSENTE.md`** só depois de todas as decisões aplicadas e da resposta sobre a tarefa; assim, uma compactação antes dessa resposta ainda encontra o arquivo e o hook lembra de perguntar. A linha em `info/exclude` permanece (inofensiva e reaproveitada na próxima ausência). Se o usuário escolheu retomar, a tarefa segue em modo normal.
+6. **Resume no chat** as decisões tomadas (o arquivo vai deixar de existir), mostra a tarefa registrada e pergunta se deve retomá-la; se ela já estava concluída, só avisa. Sem uma escolha do usuário, conta como "não retomar".
+7. **Apaga o `AUSENTE.md`** só depois de todas as decisões aplicadas e da resposta sobre a tarefa; assim, uma compactação antes dessa resposta ainda encontra o arquivo e o hook avisa que há um `/voltei` pela metade. A linha em `info/exclude` permanece (inofensiva e reaproveitada na próxima ausência). Se o usuário escolheu retomar, a tarefa segue em modo normal.
 
 ## 6. Casos de borda
 
