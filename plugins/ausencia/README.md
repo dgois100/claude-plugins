@@ -64,7 +64,7 @@ Se algo der errado no hook, ele não bloqueia nada (fail-open).
 - **`node` 18 ou mais recente no PATH.** Sem ele, os hooks não rodam e o modo depende só das instruções das skills.
 - **Prompts de permissão do Claude Code continuam existindo.** Se o seu modo de permissão pedir aprovação, a sessão para até você voltar. Antes de sair, use o auto mode ou uma allowlist adequada.
 - **O estado é por diretório.** Duas sessões no mesmo projeto ficam as duas em modo ausente.
-- **Qualquer `AUSENTE.md` com `status: ausente` ativa o modo,** inclusive um que venha versionado num repositório clonado. Para sair, rode `/voltei` ou apague o arquivo. O `/voltei` mostra e pede sua confirmação antes de aplicar decisões que já estavam no arquivo e antes de retomar a tarefa registrada nele.
+- **Qualquer `AUSENTE.md` com `status: ausente` ativa o modo,** inclusive um que venha versionado num repositório clonado. Para sair, rode `/voltei` ou apague o arquivo. O `/voltei` mostra as decisões que já estavam no arquivo e a tarefa registrada nele, e pede sua confirmação antes de aplicá-las e antes de retomar a tarefa.
 
 ## Desenvolvimento
 
