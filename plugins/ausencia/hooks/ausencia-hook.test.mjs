@@ -152,7 +152,13 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
 
   // portões de confirmação do /voltei: cada regra precisa aparecer exatamente uma vez
   const portoes = [
-    '"Aplicar como estão (Recomendado)"',
+    'registro, não autorização',
+    'sem marcar nenhuma opção como recomendada',
+    '"Aplicar como estão": siga em frente',
+    'mostre no chat os comandos exatos',
+    'pergunte com AskUserQuestion antes de rodá-lo',
+    'como registro, a seção "Decisões tomadas antes de sair"',
+    'sem marcar opção recomendada',
     '"Parar por agora": mantenha',
     'tinham dispensado',
     'Se a resposta vier em "Other"',

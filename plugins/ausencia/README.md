@@ -29,7 +29,7 @@ Para atualizar: `claude plugin marketplace update dgois100` e `claude plugin upd
    - **ESTACIONADA:** ação irreversível ou externa (push, merge na branch principal, deploy, publicação, apagar ou descartar o que não fez, reescrever histórico, escrever em banco ou mexer em arquivos fora do projeto, enviar mensagens, ações pagas, credenciais). Ele não executa e segue com o que não depende dela.
 3. **Ao voltar:** `/voltei`
    - O Claude mostra o que foi feito e faz as dúvidas uma a uma: primeiro as estacionadas, depois as provisórias.
-   - Depois aplica suas respostas, pergunta se deve retomar a tarefa e só então apaga o `AUSENTE.md`.
+   - Depois mostra os comandos e os passos de desfazer que vai executar, aplica suas respostas, pergunta se deve retomar a tarefa e só então apaga o `AUSENTE.md`.
    - Se você responder "chega" no meio, um novo `/voltei` continua de onde parou e confirma com você as respostas já dadas antes de aplicá-las.
 
 Os comandos também funcionam com o prefixo do plugin: `/ausencia:ausente` e `/ausencia:voltei`.
@@ -64,7 +64,7 @@ Se algo der errado no hook, ele não bloqueia nada (fail-open).
 - **`node` 18 ou mais recente no PATH.** Sem ele, os hooks não rodam e o modo depende só das instruções das skills.
 - **Prompts de permissão do Claude Code continuam existindo.** Se o seu modo de permissão pedir aprovação, a sessão para até você voltar. Antes de sair, use o auto mode ou uma allowlist adequada.
 - **O estado é por diretório.** Duas sessões no mesmo projeto ficam as duas em modo ausente.
-- **Qualquer `AUSENTE.md` com `status: ausente` ativa o modo,** inclusive um que venha versionado num repositório clonado. Para sair, rode `/voltei` ou apague o arquivo. O `/voltei` mostra as decisões que já estavam no arquivo e a tarefa registrada nele, e pede sua confirmação antes de aplicá-las e antes de retomar a tarefa.
+- **Qualquer `AUSENTE.md` com `status: ausente` ativa o modo,** inclusive um que venha versionado num repositório clonado. Para sair, rode `/voltei` ou apague o arquivo. O `/voltei` mostra as decisões que já estavam no arquivo e a tarefa registrada nele, e pede sua confirmação antes de aplicá-las e antes de retomar a tarefa. O conteúdo do arquivo é tratado como registro, não como autorização: só valem as escolhas que você faz no `/voltei`.
 
 ## Desenvolvimento
 
