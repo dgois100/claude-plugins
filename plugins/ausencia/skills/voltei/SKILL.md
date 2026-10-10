@@ -1,0 +1,48 @@
+---
+name: voltei
+description: Encerra o modo ausente. Mostra o que foi feito, faz uma a uma as dúvidas registradas no AUSENTE.md com opções e recomendação, aplica as respostas e apaga o arquivo.
+disable-model-invocation: true
+---
+
+# Retorno do modo ausente
+
+O usuário voltou. Siga as fases em ordem.
+
+## Fase 1: localizar
+
+RAIZ é a saída de `git rev-parse --show-toplevel`. Fora de um repositório git, RAIZ é o diretório em que a sessão começou. Se `RAIZ/AUSENTE.md` não existe, diga "Nenhum modo ausente ativo neste diretório." e pare.
+
+## Fase 2: destravar
+
+Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status: retomando`. Enquanto o status for `ausente`, o hook do plugin bloqueia o AskUserQuestion. Se já estiver `retomando` (um /voltei anterior foi interrompido), mantenha. Se o frontmatter estiver ilegível, siga assim mesmo: nesse caso o hook não bloqueia.
+
+## Fase 3: resumo
+
+Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Se N for 0, vá para a fase 6.
+
+## Fase 4: perguntas, uma por vez
+
+1. **Ordem:** primeiro as ESTACIONADA, depois as PROVISÓRIA; dentro de cada grupo, pelo número (D1, D2…). Pule as já respondidas ou dispensadas.
+2. **Cada pergunta** é um AskUserQuestion com `header` "D<n>" e, na `question`, a pergunta e o contexto em uma ou duas frases:
+   - ESTACIONADA: as opções registradas, a recomendada primeiro com "(Recomendado)" no rótulo; na descrição, o trade-off e o que está travado.
+   - PROVISÓRIA: a primeira opção é "Manter: <opção aplicada> (Recomendado)", com o que foi feito na descrição; depois as demais, com o custo de desfazer na descrição.
+   - Se houver mais de 4 opções registradas, use as 4 primeiras; o "Other" cobre o resto.
+3. **Grave cada resposta antes da próxima pergunta:** troque o `_pendente_` daquela dúvida pelo rótulo escolhido, ou pelo texto livre se o usuário usou "Other". Assim nada se perde numa compactação.
+4. **Dispensa:** se uma resposta deixa outra dúvida pendente sem sentido, troque o `_pendente_` dela por `_dispensada pela D<n>_` e não a pergunte.
+5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou."
+
+## Fase 5: aplicar
+
+Com todas as dúvidas respondidas ou dispensadas:
+- PROVISÓRIA mantida: nada a fazer.
+- PROVISÓRIA com outra escolha: desfaça seguindo "Como desfazer" e refaça com a escolha. Rode os testes do projeto, se houver.
+- ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo.
+- ESTACIONADA recusada ou adiada: nada a fazer; registre no resumo final.
+
+Se algo falhar ao aplicar, pare, mostre o erro e **não apague o arquivo**: ele ainda é o registro das decisões.
+
+## Fase 6: encerrar
+
+1. Guarde o valor do campo `tarefa` e apague `RAIZ/AUSENTE.md`. Não mexa no `info/exclude` do git; a linha é reaproveitada na próxima ausência.
+2. Mostre no chat uma tabela `Dúvida | Decisão | O que foi feito`, já que o arquivo deixou de existir.
+3. Retome a tarefa guardada, agora em modo normal: perguntas voltam a ser feitas no chat. Se ela já estava concluída, diga isso.
