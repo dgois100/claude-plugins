@@ -2,7 +2,7 @@
 
 - **Data:** 2026-10-09
 - **Estado:** aprovada e implementada na branch `feat/ausencia`. Os ajustes feitos no plano e na implementação já estão incorporados neste texto.
-- **Repositório:** `C:\Users\Danilo Gois\claude-plugins` (será publicado em `github.com/dgois100/claude-plugins`, público).
+- **Repositório:** `<pasta do repositório>` (será publicado em `github.com/dgois100/claude-plugins`, público).
 
 ## Objetivo
 
@@ -53,7 +53,7 @@ claude-plugins/                               ← repo git; marketplace "dgois10
 
 - **Marketplace:** `.claude-plugin/marketplace.json` com `name: "dgois100"` e o plugin `ausencia` com `source: "./plugins/ausencia"` (caminho relativo à raiz do marketplace).
 - **Comandos:** `/ausencia:ausente` e `/ausencia:voltei`. As formas curtas `/ausente` e `/voltei` também funcionam (confirmado no teste interativo).
-- **Uso pelo autor:** marketplace registrado pela pasta local (`claude plugin marketplace add "C:/Users/Danilo Gois/claude-plugins"` e `claude plugin install ausencia@dgois100`). Plugin com caminho relativo em marketplace local é carregado direto da pasta: edições valem após `/reload-plugins`, sem reinstalar.
+- **Uso pelo autor:** marketplace registrado pela pasta local (`claude plugin marketplace add "<pasta do repositório>"` e `claude plugin install ausencia@dgois100`). Plugin com caminho relativo em marketplace local é carregado direto da pasta: edições valem após `/reload-plugins`, sem reinstalar.
 - **Uso por terceiros:** `claude plugin marketplace add dgois100/claude-plugins` e `claude plugin install ausencia@dgois100`. Atualizações: `claude plugin marketplace update dgois100` e `claude plugin update ausencia@dgois100`. O `version` do `plugin.json` sobe a cada versão publicada.
 - **Publicação:** criar o repositório público e fazer o push é o último passo do plano e exige confirmação explícita do usuário no momento.
 - **Conteúdo público:** nada específico do ambiente do autor (caminhos pessoais, regras de outros projetos). A lista de ações de risco é genérica.
