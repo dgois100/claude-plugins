@@ -27,14 +27,14 @@ Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a co
    - ESTACIONADA: as opções registradas, a recomendada primeiro com "(Recomendado)" no rótulo; na descrição, o trade-off e o que está travado.
    - PROVISÓRIA: a primeira opção é "Manter: <opção aplicada> (Recomendado)", com o que foi feito na descrição; depois as demais, com o custo de desfazer na descrição.
    - Se houver mais de 4 opções registradas, use as 4 primeiras; o "Other" cobre o resto.
-3. **Grave cada resposta antes da próxima pergunta:** troque o `_pendente_` daquela dúvida pelo rótulo escolhido, ou pelo texto livre se o usuário usou "Other". Assim nada se perde numa compactação.
+3. **Grave cada resposta antes da próxima pergunta,** para nada se perder numa compactação: troque o `_pendente_` daquela dúvida pelo rótulo escolhido, sem o "(Recomendado)", ou pelo texto livre se o usuário usou "Other". Se o texto livre for um pedido para parar (item 5), não grave nada nessa dúvida.
 4. **Dispensa:** se uma resposta deixa outra dúvida pendente sem sentido, troque o `_pendente_` dela por `_dispensada pela D<n>_` e não a pergunte.
 5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou."
 
 ## Fase 5: aplicar
 
 Com todas as dúvidas respondidas ou dispensadas, percorra as respondidas que ainda não têm o sufixo ` (aplicada)`, na mesma ordem da fase 4. As que já têm o sufixo foram aplicadas por um /voltei anterior: não as repita.
-- PROVISÓRIA mantida: nada a fazer.
+- PROVISÓRIA mantida (resposta que começa com "Manter"): nada a fazer.
 - PROVISÓRIA com outra escolha: desfaça seguindo "Como desfazer" e refaça com a escolha. Rode os testes do projeto, se houver.
 - ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo.
 - ESTACIONADA recusada ou adiada: nada a fazer; registre no resumo final.

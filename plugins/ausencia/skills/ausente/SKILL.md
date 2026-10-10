@@ -19,7 +19,7 @@ Siga as fases em ordem. Nas fases 1 a 3 o usuário ainda está presente. Da fase
 2. **Raiz.** RAIZ é a saída de `git rev-parse --show-toplevel`. Fora de um repositório git, RAIZ é o diretório em que a sessão começou. O arquivo de estado é `RAIZ/AUSENTE.md`.
 3. **Arquivo existente.** Se `RAIZ/AUSENTE.md` já existe, leia o campo `status` do frontmatter:
    - `ausente`: diga "O modo ausente já está ativo." Se houver instrução nova, atualize só o campo `tarefa`. Pule para a fase 5.
-   - `retomando`: um /voltei ficou pela metade. Pergunte com AskUserQuestion entre "Terminar o /voltei agora (Recomendado)" e "Levar as N pendentes para esta ausência". Na primeira opção, diga "Rode /voltei." e pare. Na segunda, siga para a fase 2; na fase 4, atualize o arquivo em vez de criá-lo.
+   - `retomando`: um /voltei ficou pela metade. Conte N, as dúvidas com `**Resposta:** _pendente_`. Pergunte com AskUserQuestion entre "Terminar o /voltei agora (Recomendado)" e "Levar as N pendentes para esta ausência". Na primeira opção, diga "Rode /voltei." e pare. Na segunda, siga para a fase 2; na fase 4, atualize o arquivo em vez de criá-lo. As dúvidas já respondidas ficam como estão, sem executar nada agora: o próximo /voltei aplica as que ainda não têm ` (aplicada)`.
 
 ## Fase 2: tarefa
 
@@ -93,7 +93,9 @@ Use de 2 a 4 opções, com exatamente uma recomendada, listada primeiro. Antes d
   - push, force-push ou merge na branch principal;
   - deploy ou publicação de qualquer tipo;
   - apagar arquivos, branches ou dados que não foram criados nesta sessão;
+  - descartar alterações que não foram feitas nesta sessão (`git reset --hard`, `git checkout -- .`, `git restore`, `git clean`, `git stash drop`) ou reescrever histórico que já existia (`git rebase`, `git commit --amend`);
   - escrever em banco de dados ou em ambiente compartilhado;
+  - alterar arquivos que já existiam fora do diretório do projeto (por exemplo, configurações na pasta do usuário); criar arquivos temporários não conta;
   - enviar mensagens, e-mails, comentários, issues ou PRs;
   - qualquer ação paga (APIs pagas, compras);
   - alterar credenciais, permissões ou configuração global da máquina.
