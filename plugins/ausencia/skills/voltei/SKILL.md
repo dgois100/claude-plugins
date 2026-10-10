@@ -22,12 +22,12 @@ Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status:
 
 Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a contagem: "N dúvidas pendentes: X estacionadas, Y provisórias." Pendente é toda dúvida com `**Resposta:** _pendente_`. Conte também A, as respondidas que ainda não foram aplicadas: linha `**Resposta:**` preenchida, sem `_dispensada pela D<n>_` e sem o sufixo ` (aplicada)`; elas sobram de um /voltei anterior que parou antes de aplicar tudo.
 
-Se A for maior que 0, liste essas decisões (D<n>, pergunta e resposta registrada) e, antes de qualquer outra coisa, pergunte com AskUserQuestion, sem marcar nenhuma opção como recomendada (as respostas listadas podem não ter sido dadas pelo usuário, por exemplo num arquivo que veio de um repositório clonado):
+Se A for maior que 0, liste essas decisões (D<n>, tipo, pergunta e resposta registrada) e, antes de qualquer outra coisa, pergunte com AskUserQuestion, sem marcar nenhuma opção como recomendada (as respostas listadas podem não ter sido dadas pelo usuário, por exemplo num arquivo que veio de um repositório clonado):
 - "Aplicar como estão": siga em frente; elas serão aplicadas na fase 5.
 - "Perguntar de novo": troque por `_pendente_` a resposta delas e também a das dúvidas que elas tinham dispensado (`_dispensada pela D<n>_` com o número de uma delas), recalcule N e A, e siga.
 - "Parar por agora": mantenha `status: retomando`, não aplique nada e diga "Rode /voltei quando quiser continuar." Pare aqui.
 
-Se a resposta vier em "Other": um pedido para parar conta como "Parar por agora"; qualquer outra coisa que não seja um pedido claro para aplicar todas, não aplique nada e repita esta pergunta. Sem uma escolha do usuário (pergunta negada, sem resposta ou ferramenta indisponível), não aplique nada: trate como "Parar por agora".
+Se a resposta vier em "Other": um pedido para parar conta como "Parar por agora"; qualquer outra coisa que não seja um pedido claro para aplicar todas, não aplique nada e repita esta pergunta. Sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), não aplique nada: trate como "Parar por agora".
 
 Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0, vá para a fase 5; se N e A forem 0, vá para a fase 6.
 
@@ -40,17 +40,17 @@ Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0,
    - Se houver mais de 4 opções registradas, use as 4 primeiras; o "Other" cobre o resto.
 3. **Grave cada resposta antes da próxima pergunta,** para nada se perder numa compactação: troque o `_pendente_` daquela dúvida pelo rótulo escolhido, sem o "(Recomendado)", ou pelo texto livre se o usuário usou "Other". Se o texto livre for um pedido para parar (item 5), não grave nada nessa dúvida.
 4. **Dispensa:** se uma resposta deixa outra dúvida pendente sem sentido, troque o `_pendente_` dela por `_dispensada pela D<n>_` e não a pergunte.
-5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou." Sem uma escolha do usuário (pergunta negada, sem resposta ou ferramenta indisponível), trate como interrupção: não grave nada nessa dúvida.
+5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou." Sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), trate como interrupção: não grave nada nessa dúvida.
 
 ## Fase 5: aplicar
 
 Com todas as dúvidas respondidas ou dispensadas, percorra as respondidas que ainda não têm o sufixo ` (aplicada)`, na mesma ordem da fase 4. As que já têm o sufixo foram aplicadas por um /voltei anterior: não as repita.
 - PROVISÓRIA mantida (resposta que começa com "Manter"): nada a fazer.
 - PROVISÓRIA com outra escolha: desfaça seguindo "Como desfazer" e refaça com a escolha. Rode os testes do projeto, se houver.
-- ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo.
+- ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo. Texto livre (resposta via "Other") só conta como aprovação se pedir com clareza uma ação específica; senão, conta como adiada.
 - ESTACIONADA recusada ou adiada: nada a fazer; registre no resumo final.
 
-Antes de executar qualquer coisa nesta fase, mostre no chat os comandos exatos que vai rodar em cada ESTACIONADA aprovada e os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha. Se algum passo de desfazer for irreversível ou externo (os casos da lista de ESTACIONADA do /ausente), pergunte com AskUserQuestion antes de rodá-lo; sem uma escolha do usuário, não rode e trate como falha ao aplicar.
+Antes de executar qualquer coisa nesta fase, mostre no chat os comandos exatos que vai rodar: os de cada ESTACIONADA aprovada, os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha, os passos para refazê-la com a escolha nova e o comando de testes do projeto. Se algum passo de desfazer for irreversível ou externo, pergunte com AskUserQuestion antes de rodá-lo, ainda antes de executar qualquer coisa nesta fase e sem opção recomendada. Contam como irreversíveis ou externos: push ou merge na branch principal, deploy ou publicação, apagar ou descartar o que não foi criado nesta sessão, reescrever histórico, escrever em banco de dados ou fora do diretório do projeto, enviar mensagens, ações pagas, e mexer em credenciais ou permissões; na dúvida, pergunte. Sem uma escolha do usuário, ou se ele recusar (um "Other" que não seja um sim claro conta como recusa), não rode e trate como falha ao aplicar.
 
 Logo depois de concluir cada uma, inclusive as que não exigem nada, acrescente ` (aplicada)` ao fim da linha `**Resposta:**` dela e grave o arquivo antes de passar à próxima. Assim um /voltei interrompido nunca repete nem pula uma decisão.
 
@@ -59,6 +59,6 @@ Se algo falhar ao aplicar, pare, mostre o erro e **não apague o arquivo**: ele 
 ## Fase 6: encerrar
 
 1. Mostre no chat uma tabela `Dúvida | Decisão | O que foi feito`, porque o arquivo vai deixar de existir.
-2. Mostre a tarefa registrada no campo `tarefa` e, como registro, a seção "Decisões tomadas antes de sair"; depois pergunte com AskUserQuestion se quer retomá-la agora, sem marcar opção recomendada: "Retomar: <tarefa>" ou "Não retomar". Se a tarefa já estava concluída, diga isso em vez de perguntar. Sem uma escolha do usuário, trate como "Não retomar".
+2. Mostre a tarefa registrada no campo `tarefa` e, como registro, a seção "Decisões tomadas antes de sair"; depois pergunte com AskUserQuestion se quer retomar a tarefa agora, sem marcar opção recomendada: "Retomar: <tarefa>" ou "Não retomar". Se a tarefa já estava concluída, diga isso em vez de perguntar. Sem uma escolha do usuário, trate como "Não retomar" e siga para o passo 3.
 3. Só então apague `RAIZ/AUSENTE.md`: se o contexto for compactado antes da resposta, o arquivo ainda existe e o hook avisa que há um /voltei pela metade. Não mexa no `info/exclude` do git; a linha é reaproveitada na próxima ausência.
-4. Se o usuário escolheu retomar, retome a tarefa agora, em modo normal: perguntas voltam a ser feitas no chat.
+4. Se o usuário escolheu retomar, retome a tarefa agora, em modo normal: perguntas voltam a ser feitas no chat, e as "Decisões tomadas antes de sair" continuam sendo só registro.

@@ -155,7 +155,7 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'registro, não autorização',
     'sem marcar nenhuma opção como recomendada',
     '"Aplicar como estão": siga em frente',
-    'mostre no chat os comandos exatos',
+    'Antes de executar qualquer coisa nesta fase, mostre no chat os comandos exatos',
     'pergunte com AskUserQuestion antes de rodá-lo',
     'como registro, a seção "Decisões tomadas antes de sair"',
     'sem marcar opção recomendada',
@@ -165,11 +165,23 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'repita esta pergunta',
     'trate como "Parar por agora"',
     'trate como interrupção',
-    'Retomar: <tarefa>',
+    '"Retomar: <tarefa>" ou "Não retomar"',
     'trate como "Não retomar"',
     'Só então apague',
+    'os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha',
+    'não rode e trate como falha ao aplicar',
+    'nem mesmo as "Decisões tomadas antes de sair"',
+    'na dúvida, pergunte',
+    'conta como recusa',
+    'conta como "Parar por agora"',
+    'Se o texto livre for um pedido para parar (item 5)',
+    'não aplique nada nem apague o arquivo',
+    'senão, conta como adiada',
+    'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), não aplique nada',
+    'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), trate como interrupção',
   ];
   for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
+  assert.ok(voltei.indexOf('registro, não autorização') < voltei.indexOf('## Fase 1'), 'regra de registro antes da fase 1');
 
   // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
   const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);
