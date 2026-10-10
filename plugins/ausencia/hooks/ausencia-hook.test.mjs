@@ -150,6 +150,10 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
   assert.ok(voltei.includes(' (aplicada)'));
   assert.ok(voltei.includes('_dispensada pela D'));
 
+  // portões de confirmação do /voltei: decisões antigas e retomada da tarefa
+  assert.ok(voltei.includes('"Parar por agora"'));
+  assert.ok(voltei.includes('Retomar: <tarefa>'));
+
   // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
   const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);
   assert.deepEqual(nomes, ['ausente', 'voltei']);

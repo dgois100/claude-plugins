@@ -19,7 +19,7 @@ Siga as fases em ordem. Nas fases 1 a 3 o usuário ainda está presente. Da fase
 2. **Raiz.** RAIZ é a saída de `git rev-parse --show-toplevel`. Fora de um repositório git, RAIZ é o diretório em que a sessão começou. O arquivo de estado é `RAIZ/AUSENTE.md`.
 3. **Arquivo existente.** Se `RAIZ/AUSENTE.md` já existe, leia o campo `status` do frontmatter:
    - `ausente`: diga "O modo ausente já está ativo." Se houver instrução nova, atualize só o campo `tarefa`. Pule para a fase 5.
-   - `retomando`: um /voltei ficou pela metade. Conte N, as dúvidas com `**Resposta:** _pendente_`. Pergunte com AskUserQuestion entre "Terminar o /voltei agora (Recomendado)" e "Levar as N pendentes para esta ausência". Na primeira opção, diga "Rode /voltei." e pare. Na segunda, siga para a fase 2; na fase 4, atualize o arquivo em vez de criá-lo. As dúvidas já respondidas ficam como estão, sem executar nada agora: o próximo /voltei aplica as que ainda não têm ` (aplicada)`.
+   - `retomando`: um /voltei ficou pela metade. Conte N, as dúvidas com `**Resposta:** _pendente_`. Pergunte com AskUserQuestion entre "Terminar o /voltei agora (Recomendado)" e "Levar as N pendentes para esta ausência". Na primeira opção, diga "Rode /voltei." e pare. Na segunda, siga para a fase 2; na fase 4, atualize o arquivo em vez de criá-lo. As dúvidas já respondidas ficam como estão, sem executar nada agora: o próximo /voltei pede confirmação ao usuário e só então aplica as que ainda não têm ` (aplicada)`.
 
 ## Fase 2: tarefa
 

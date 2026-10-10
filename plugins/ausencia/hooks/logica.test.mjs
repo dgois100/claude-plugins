@@ -170,6 +170,7 @@ test('SessionStart com retomando: avisa o /voltei interrompido e, na compactaç�
   const compactado = decidir(sessao('compact'), ARQ('retomando', 2), REGRAS, RETORNO).hookSpecificOutput.additionalContext;
   assert.match(compactado, /\/voltei pela metade, com 2 dúvidas pendentes/);
   assert.match(compactado, /Não retome sozinho: pergunte ao usuário se quer continuar o \/voltei/);
+  assert.doesNotMatch(compactado, /fase 5|primeira dúvida pendente/);
   assert.ok(compactado.includes(RETORNO));
   assert.ok(!compactado.includes(REGRAS));
 });

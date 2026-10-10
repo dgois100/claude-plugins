@@ -22,8 +22,10 @@ Mostre a seção "Feito enquanto você estava fora" (resuma se for longa) e a co
 
 Se A for maior que 0, liste essas decisões (D<n>, pergunta e resposta registrada) e, antes de qualquer outra coisa, pergunte com AskUserQuestion:
 - "Aplicar como estão (Recomendado)": siga em frente; elas serão aplicadas na fase 5.
-- "Perguntar de novo": troque a resposta delas por `_pendente_`, recalcule N e A, e siga.
+- "Perguntar de novo": troque por `_pendente_` a resposta delas e também a das dúvidas que elas tinham dispensado (`_dispensada pela D<n>_` com o número de uma delas), recalcule N e A, e siga.
 - "Parar por agora": mantenha `status: retomando`, não aplique nada e diga "Rode /voltei quando quiser continuar." Pare aqui.
+
+Se a resposta vier em "Other": um pedido para parar conta como "Parar por agora"; qualquer outra coisa que não seja um pedido claro para aplicar todas, não aplique nada e pergunte de novo.
 
 Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0, vá para a fase 5; se N e A forem 0, vá para a fase 6.
 
@@ -54,4 +56,4 @@ Se algo falhar ao aplicar, pare, mostre o erro e **não apague o arquivo**: ele 
 
 1. Guarde o valor do campo `tarefa` e apague `RAIZ/AUSENTE.md`. Não mexa no `info/exclude` do git; a linha é reaproveitada na próxima ausência.
 2. Mostre no chat uma tabela `Dúvida | Decisão | O que foi feito`, já que o arquivo deixou de existir.
-3. Retome a tarefa guardada, agora em modo normal: perguntas voltam a ser feitas no chat. Se ela já estava concluída, diga isso.
+3. Mostre a tarefa guardada e pergunte com AskUserQuestion se quer retomá-la agora: "Retomar: <tarefa> (Recomendado)" ou "Não retomar". Só retome se o usuário escolher retomar, agora em modo normal: perguntas voltam a ser feitas no chat. Se a tarefa já estava concluída, diga isso em vez de perguntar.
