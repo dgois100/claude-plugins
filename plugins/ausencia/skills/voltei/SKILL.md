@@ -14,6 +14,12 @@ O usuário voltou. Siga as fases em ordem.
 
 RAIZ é a saída de `git rev-parse --show-toplevel`. Fora de um repositório git, RAIZ é o diretório em que a sessão começou. Se `RAIZ/AUSENTE.md` não existe, diga "Nenhum modo ausente ativo neste diretório." e pare.
 
+Se RAIZ é um repositório git e `git ls-files --error-unmatch -- AUSENTE.md`, rodado em RAIZ, encontra o arquivo, ele é versionado: veio do repositório, não do /ausente (que nunca o põe em commit), e o hook do plugin o ignora. Avise o usuário disso e pergunte com AskUserQuestion, sem opção recomendada:
+- "Encerrar sem aplicar nada": não altere nem apague o arquivo e pare.
+- "Continuar mesmo assim": siga as fases normalmente, sem marcar recomendação na fase 4.
+
+Sem uma escolha do usuário, ou com um "Other" que não seja um pedido claro para continuar, trate como "Encerrar sem aplicar nada".
+
 ## Fase 2: destravar
 
 Antes de qualquer pergunta, troque no frontmatter `status: ausente` por `status: retomando`. Enquanto o status for `ausente`, o hook do plugin bloqueia o AskUserQuestion. Se já estiver `retomando` (um /voltei anterior foi interrompido), mantenha. Se o frontmatter estiver ilegível, siga assim mesmo: nesse caso o hook não bloqueia.
@@ -38,6 +44,7 @@ Depois: se N for maior que 0, vá para a fase 4; se N for 0 e A for maior que 0,
    - ESTACIONADA: as opções registradas, a recomendada primeiro com "(Recomendado)" no rótulo; na descrição, o trade-off e o que está travado.
    - PROVISÓRIA: a primeira opção é "Manter: <opção aplicada> (Recomendado)", com o que foi feito na descrição; depois as demais, com o custo de desfazer na descrição.
    - Se houver mais de 4 opções registradas, use as 4 primeiras; o "Other" cobre o resto.
+   - Se o arquivo é versionado (fase 1), nenhum rótulo leva "(Recomendado)".
 3. **Grave cada resposta antes da próxima pergunta,** para nada se perder numa compactação: troque o `_pendente_` daquela dúvida pelo rótulo escolhido, sem o "(Recomendado)", ou pelo texto livre se o usuário usou "Other". Se o texto livre for um pedido para parar (item 5), não grave nada nessa dúvida.
 4. **Dispensa:** se uma resposta deixa outra dúvida pendente sem sentido, troque o `_pendente_` dela por `_dispensada pela D<n>_` e não a pergunte.
 5. **Interrupção:** se o usuário responder algo como "chega" ou "depois", pare. Mantenha `status: retomando`, não aplique nada nem apague o arquivo, e diga: "Faltam N dúvidas. Rode /voltei para continuar de onde parou." Sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), trate como interrupção: não grave nada nessa dúvida.

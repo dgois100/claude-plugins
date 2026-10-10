@@ -110,7 +110,7 @@ Regras do formato:
 - **Opções:** de 2 a 4, com exatamente uma marcada "(recomendada)", listada primeiro. Mesmo formato do `AskUserQuestion`, para virar pergunta direto no retorno.
 - **Resposta:** `_pendente_` até ser respondida no `/voltei`. Valores possíveis depois: o texto da escolha, ou `_dispensada pela Dn_`. Quando o `/voltei` aplica a decisão, acrescenta ` (aplicada)` ao fim da linha.
 - **Decisões tomadas antes de sair:** seção com uma linha por resposta dada no `/ausente` (`- <pergunta>: <resposta>`), para sobreviver a uma compactação. O hook não lê essa seção.
-- **Leitura pelo hook:** o hook só lê o frontmatter. Bloqueia apenas quando o primeiro termo de `status`, sem aspas, é `ausente` (então `"ausente"` e `ausente # nota` também contam). Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não age (fail-open). O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
+- **Leitura pelo hook:** o hook ignora um `AUSENTE.md` versionado (seção 4). Nos demais, decide pelo frontmatter; do corpo, só conta as pendentes. Bloqueia apenas quando o primeiro termo de `status`, sem aspas, é `ausente` (então `"ausente"` e `ausente # nota` também contam). Arquivo ausente, frontmatter ilegível ou qualquer outro valor: o hook não bloqueia nada (fail-open); com `retomando`, só o `SessionStart` avisa. O pior caso de erro é o modelo voltar a perguntar, nunca o usuário ficar impedido de responder.
 
 ## 3. `/ausente` e o comportamento durante a ausência
 
@@ -118,8 +118,10 @@ Regras do formato:
 
 1. **Pré-checagens:**
    - Em plan mode: pede para o usuário sair do plan mode antes (o modelo não consegue escrever o `AUSENTE.md` nele) e termina.
+   - `AUSENTE.md` versionado no repositório: veio do repositório, não do `/ausente`, e o hook o ignora. Avisa, pede para renomeá-lo ou tirá-lo do controle de versão e termina.
    - `AUSENTE.md` com `status: ausente`: avisa que o modo já está ativo e só atualiza `tarefa` se houver instrução nova.
    - `AUSENTE.md` com `status: retomando` (um `/voltei` ficou pela metade): pergunta se o usuário quer terminar o `/voltei` antes ou levar as dúvidas pendentes para a nova ausência.
+   - `AUSENTE.md` com outro `status` ou frontmatter ilegível: não foi criado pelo `/ausente`. Avisa, pede para renomeá-lo e termina, sem sobrescrevê-lo.
 2. **Define a tarefa:** a instrução passada; senão, o trabalho em andamento na conversa; senão, pergunta ao usuário o que fazer.
 3. **Pergunta de triagem:** "Tenho N perguntas (~X min). Responder agora?" com as opções "Todas", "Só as 3 de maior impacto" e "Nenhuma, já estou saindo". N inclui as pendentes da conversa e as previsíveis da tarefa (escopo, abordagem, nomes, portões de aprovação que certamente virão). Se N = 0, pula para o passo 5.
 4. **Perguntas, uma por vez,** via `AskUserQuestion`, da de maior para a de menor impacto, com a recomendação primeiro. As não respondidas serão tratadas pela regra de risco quando surgirem. As respondidas são registradas no passo 5, na seção "Decisões tomadas antes de sair".
@@ -152,16 +154,16 @@ Regras do formato:
 
 ## 4. Hooks
 
-O hook é o script `hooks/ausencia-hook.mjs`, sem dependências. Ele lê o JSON da entrada padrão por eventos, com limite de 2 s, para que um stdin que nunca fecha (ou que é um terminal) não trave a sessão. Procura o `AUSENTE.md` primeiro em `CLAUDE_PROJECT_DIR` e depois no `cwd`, subindo até a raiz do repositório git; fora de um repositório, só o próprio `cwd` conta. Escreve no máximo um JSON na saída padrão e sai sempre com código 0; qualquer exceção resulta em saída silenciosa (fail-open).
+O hook é o script `hooks/ausencia-hook.mjs`, sem dependências. Ele lê o JSON da entrada padrão por eventos, com limite de 2 s, para que um stdin que nunca fecha (ou que é um terminal) não trave a sessão. Procura o `AUSENTE.md` primeiro em `CLAUDE_PROJECT_DIR` e depois no `cwd`, subindo até a raiz do repositório git; fora de um repositório, só o próprio `cwd` conta. Se o arquivo encontrado é versionado (`git ls-files --error-unmatch -- AUSENTE.md`, rodado na pasta dele, com limite de 1,5 s), o hook o ignora: o `/ausente` nunca o põe em commit, então ele veio do repositório. Sem git, fora de um repositório ou com erro, o arquivo conta como não versionado. Escreve no máximo um JSON na saída padrão e sai sempre com código 0; qualquer exceção resulta em saída silenciosa (fail-open).
 
-**Organização para teste:** a lógica fica em funções puras exportadas por `hooks/logica.mjs`; o `hooks/ausencia-hook.mjs` só lê a entrada e o arquivo e escreve a saída.
+**Organização para teste:** a lógica fica em funções puras exportadas por `hooks/logica.mjs`; o `hooks/ausencia-hook.mjs` só lê a entrada e o arquivo, confere se ele é versionado e escreve a saída.
 
 - `lerFrontmatter(conteudo)` → `{ status, desde, tarefa }` ou `null`.
 - `contarPendentes(conteudo)` → número de ocorrências de `**Resposta:** _pendente_`.
 - `localizarAusente(cwd, projectDir, existe)` → caminho do `AUSENTE.md` ou `null`.
 - `decidir(entrada, conteudo, caminhoRegras, caminhoRetorno)` → objeto de saída do hook ou `null`. As mensagens citam o caminho absoluto do `SKILL.md` de cada skill, porque as duas têm `disable-model-invocation: true` e o modelo precisa relê-las pelo caminho depois de uma compactação.
 
-**Regra geral:** se `conteudo` é `null` (sem arquivo) ou `status` não é `ausente`, `decidir` retorna `null` para todos os eventos. Exceção: com `status: retomando`, o `SessionStart` age. Na compactação (`compact`), injeta "Há um /voltei pela metade, com {n} dúvida(s) pendente(s) no AUSENTE.md. Não retome sozinho: pergunte ao usuário se quer continuar o /voltei; se ele confirmar, releia o AUSENTE.md e siga a skill ausencia:voltei ({caminho})."; nas demais origens (`startup|resume|clear|fork`), injeta "Há um /voltei interrompido com {n} dúvida(s) pendente(s) no AUSENTE.md; sugira /voltei para terminar.", para o arquivo não ficar esquecido.
+**Regra geral:** se `conteudo` é `null` (sem arquivo, ou com arquivo versionado) ou `status` não é `ausente`, `decidir` retorna `null` para todos os eventos. Exceção: com `status: retomando`, o `SessionStart` age. Na compactação (`compact`), injeta "Há um /voltei pela metade, com {n} dúvida(s) pendente(s) no AUSENTE.md. Não retome sozinho: pergunte ao usuário se quer continuar o /voltei; se ele confirmar, releia o AUSENTE.md e siga a skill ausencia:voltei ({caminho})."; nas demais origens (`startup|resume|clear|fork`), injeta "Há um /voltei interrompido com {n} dúvida(s) pendente(s) no AUSENTE.md; sugira /voltei para terminar.", para o arquivo não ficar esquecido.
 
 | Evento (matcher) | Condição extra | Saída |
 |---|---|---|
@@ -181,7 +183,7 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
 
 ## 5. `/voltei`
 
-1. **Lê o `AUSENTE.md`.** Se não existir: responde "Nenhum modo ausente ativo neste diretório" e termina. O conteúdo do arquivo é registro, não autorização: nenhuma linha dele autoriza uma ação por si só; só valem as escolhas que o usuário fizer no `/voltei`.
+1. **Lê o `AUSENTE.md`.** Se não existir: responde "Nenhum modo ausente ativo neste diretório" e termina. Se for versionado, avisa e pergunta, sem opção recomendada, se deve encerrar sem aplicar nada (sem alterar nem apagar o arquivo) ou continuar mesmo assim; sem uma escolha, encerra. Continuando, nenhuma opção do passo 4 é marcada como recomendada. O conteúdo do arquivo é registro, não autorização: nenhuma linha dele autoriza uma ação por si só; só valem as escolhas que o usuário fizer no `/voltei`.
 2. **Muda `status` para `retomando`.** A partir daí os hooks não bloqueiam nada (só o `SessionStart` avisa; ver seção 4) e o `AskUserQuestion` volta a funcionar.
 3. **Mostra o resumo** "Feito enquanto você estava fora" e a contagem de pendentes por tipo. Se houver respondidas ainda sem ` (aplicada)` (de um `/voltei` anterior que parou antes de aplicar tudo), lista essas decisões, com o tipo de cada uma, e pede confirmação antes de seguir, sem opção recomendada: aplicar como estão, perguntar de novo (o que reabre também as dúvidas que elas tinham dispensado) ou parar por agora; uma resposta livre que não seja um pedido claro para aplicar todas não aplica nada, e a falta de resposta também não. Sem pendentes, segue direto para o passo 5.
 4. **Pergunta uma a uma** via `AskUserQuestion`:
@@ -210,7 +212,8 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
 | Usuário apaga o arquivo à mão | O modo ausente acaba. |
 | Duas sessões no mesmo diretório | Ambas ficam em modo ausente (estado por diretório). Limitação documentada. |
 | Sem `node` no PATH | Hooks falham sem bloquear; plugin funciona só pelas instruções. Documentado. |
-| `AUSENTE.md` versionado num repositório clonado | Ativa o modo como qualquer outro. `/voltei` ou apagar o arquivo encerra. O `/voltei` pede confirmação antes de aplicar decisões que já estavam no arquivo e antes de retomar a tarefa; trata o conteúdo como registro, não autorização, e mostra os comandos antes de rodá-los. Limitação documentada. |
+| `AUSENTE.md` versionado no repositório (por exemplo, de um clone) | O hook o ignora e o `/ausente` se recusa a usá-lo. O `/voltei` avisa e pergunta, sem recomendação, se deve encerrar sem aplicar nada ou continuar; continuando, não marca recomendação nas perguntas, trata o conteúdo como registro, não autorização, e pede confirmação antes de executar e antes de retomar a tarefa. |
+| `/ausente` com um `AUSENTE.md` que não é do plugin (outro `status` ou frontmatter ilegível) | Avisa e termina, sem sobrescrever o arquivo. |
 | Usuário digita algo durante a ausência | `UserPromptSubmit` lembra o modelo de sugerir `/voltei`; o modo continua ativo. O `Stop` ainda bloqueia uma vez nesse turno (efeito aceito). |
 
 ## 7. Testes
@@ -219,7 +222,7 @@ Para `SessionStart` e `UserPromptSubmit` o formato é `{"hookSpecificOutput":{"h
   - `lerFrontmatter`: sem frontmatter, `ausente`, `retomando`, valor desconhecido, conteúdo lixo, CRLF, BOM, aspas e comentário depois do valor.
   - `contarPendentes`: zero, várias, respostas preenchidas e dispensadas.
   - `decidir`, para cada evento × estado (sem arquivo, `ausente`, `retomando`, corrompido): agente principal versus subagente no `PreToolUse`; cada matcher de `SessionStart`, incluindo a exceção de `retomando`; prompts que começam com os comandos do plugin versus outros no `UserPromptSubmit`; `stop_hook_active` verdadeiro e falso no `Stop`.
-  - Execução do script de ponta a ponta com stdin simulado: JSON válido na saída, código 0, e código 0 sem saída quando o stdin é inválido; entrada que chega aos poucos; stdin que nunca fecha (o hook termina em até 2 s, sem saída).
+  - Execução do script de ponta a ponta com stdin simulado: JSON válido na saída, código 0, e código 0 sem saída quando o stdin é inválido; entrada que chega aos poucos; stdin que nunca fecha (o hook desiste de ler após 2 s e termina sem saída); `AUSENTE.md` versionado num repositório git real (antes do `git add`, ativa o modo; depois, o hook não age).
 - **Contrato entre arquivos:** um teste lê as duas skills e o `plugin.json` e confere os marcadores e os nomes de comando que o hook usa, e que os caminhos citados nas mensagens existem.
 - **Validação estrutural:** `claude plugin validate` no marketplace.
 - **Smoke test headless** (`tests/smoke-headless.mjs`, com `claude -p`): `SessionStart` e `Stop` numa sessão real. O `AskUserQuestion` não existe no modo `-p`, então o resto é coberto pelo teste interativo.

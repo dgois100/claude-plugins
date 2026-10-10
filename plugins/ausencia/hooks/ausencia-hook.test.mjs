@@ -73,6 +73,28 @@ test('hook: sem AUSENTE.md, sai com 0 e sem saída', () => {
   assert.equal(r.stdout, '');
 });
 
+test('hook: ignora um AUSENTE.md versionado no repositório', () => {
+  const repo = join(base, 'versionado');
+  mkdirSync(repo);
+  const git = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+  assert.equal(git('init', '-q').status, 0);
+  writeFileSync(join(repo, 'AUSENTE.md'), ARQ('ausente'));
+  const parar = { hook_event_name: 'Stop', cwd: repo, stop_hook_active: false };
+  // controle: enquanto não é versionado, o arquivo ativa o modo
+  assert.equal(JSON.parse(rodar(parar).stdout).decision, 'block');
+  assert.equal(git('add', '-f', 'AUSENTE.md').status, 0);
+  for (const entrada of [
+    parar,
+    { hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', cwd: repo },
+    { hook_event_name: 'SessionStart', source: 'compact', cwd: repo },
+    { hook_event_name: 'UserPromptSubmit', prompt: 'oi', cwd: repo },
+  ]) {
+    const r = rodar(entrada);
+    assert.equal(r.status, 0, entrada.hook_event_name);
+    assert.equal(r.stdout, '', entrada.hook_event_name);
+  }
+});
+
 test('hook: entrada vazia, inválida, nula ou sem campos sai com 0 e sem saída', () => {
   for (const entrada of ['', 'isto não é json', '{}', '[]', 'null']) {
     const r = rodar(entrada);
@@ -189,11 +211,24 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'trate como "Não retomar" e siga para o passo 3',
     'continuam sendo só registro',
     'senão, trate como mantida',
+    'git ls-files --error-unmatch -- AUSENTE.md',
+    'Avise o usuário disso e pergunte com AskUserQuestion, sem opção recomendada',
+    '"Encerrar sem aplicar nada": não altere nem apague o arquivo e pare',
+    '"Continuar mesmo assim": siga as fases normalmente, sem marcar recomendação na fase 4',
+    'trate como "Encerrar sem aplicar nada"',
+    'nenhum rótulo leva "(Recomendado)"',
   ];
   for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
   assert.ok(voltei.indexOf('registro, não autorização') < voltei.indexOf('## Fase 1'), 'regra de registro antes da fase 1');
   const passos = ['1. Mostre no chat os comandos exatos', '2. Pergunte uma única vez', '3. Só com "Executar"'].map((t) => voltei.indexOf(t));
   assert.ok(passos[0] < passos[1] && passos[1] < passos[2], 'mostrar, perguntar e só então rodar');
+  assert.ok(voltei.indexOf('git ls-files --error-unmatch') < voltei.indexOf('## Fase 2'), 'versionado conferido na fase 1');
+
+  // portões do /ausente: um AUSENTE.md versionado ou que não é do plugin nunca é usado nem sobrescrito
+  for (const trecho of ['git ls-files --error-unmatch -- AUSENTE.md', 'Este repositório versiona um AUSENTE.md', 'o arquivo não foi criado pelo /ausente']) {
+    assert.equal(ausente.split(trecho).length - 1, 1, trecho);
+  }
+  assert.ok(ausente.indexOf('git ls-files --error-unmatch') < ausente.indexOf('leia o campo `status`'), 'versionado conferido antes do status');
 
   // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
   const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);
