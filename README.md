@@ -27,7 +27,7 @@ claude plugin update ausencia@dgois100
 A Claude Code plugin marketplace. Its first plugin, `ausencia` ("absence"), adds two commands:
 
 - `/ausente` ("I'm away"): Claude first asks the questions it already knows it will need, then keeps working on its own. Instead of asking you anything, it logs every open decision in an `AUSENTE.md` file with options and a recommendation. Reversible decisions go ahead with the recommended option and are marked provisional. Irreversible or external actions (push, deploy, deletes, discarding uncommitted work, history rewrites, database writes, sending messages) are parked.
-- `/voltei` ("I'm back"): Claude walks you through the logged decisions one at a time, applies your answers, and deletes the file.
+- `/voltei` ("I'm back"): Claude walks you through the logged decisions one at a time, shows everything it is about to run and waits for one confirmation before applying your answers, asks whether to resume the task, and deletes the file.
 
 Hooks enforce the mode: `AskUserQuestion` is denied while you are away, the mode survives context compaction, and Claude gets one checklist before ending its turn. Requires Node 18 or newer on the PATH for the hooks. The commands and docs are in Brazilian Portuguese; Claude answers in your language.
 

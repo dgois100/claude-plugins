@@ -1,6 +1,6 @@
 ---
 name: voltei
-description: Encerra o modo ausente. Mostra o que foi feito, faz uma a uma as dúvidas registradas no AUSENTE.md com opções e recomendação, aplica as respostas e apaga o arquivo.
+description: Encerra o modo ausente. Mostra o que foi feito, faz uma a uma as dúvidas registradas no AUSENTE.md com opções e recomendação, aplica as respostas depois de uma confirmação, pergunta se deve retomar a tarefa e apaga o arquivo.
 disable-model-invocation: true
 ---
 
@@ -50,7 +50,10 @@ Com todas as dúvidas respondidas ou dispensadas, percorra as respondidas que ai
 - ESTACIONADA aprovada: execute agora, normalmente. As permissões da sessão continuam valendo. Texto livre (resposta via "Other") só conta como aprovação se pedir com clareza uma ação específica; senão, conta como adiada.
 - ESTACIONADA recusada ou adiada: nada a fazer; registre no resumo final.
 
-Antes de executar qualquer coisa nesta fase, mostre no chat os comandos exatos que vai rodar: os de cada ESTACIONADA aprovada, os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha, os passos para refazê-la com a escolha nova e o comando de testes do projeto. Se algum passo de desfazer for irreversível ou externo, pergunte com AskUserQuestion antes de rodá-lo, mesmo antes de executar qualquer coisa nesta fase e sem opção recomendada. Contam como irreversíveis ou externos: fazer push (para qualquer branch), force-push ou merge na branch principal; fazer deploy ou publicar; apagar ou descartar o que não foi criado nesta sessão; reescrever histórico; escrever em banco de dados ou em ambiente compartilhado; alterar arquivos que já existiam fora do diretório do projeto (criar arquivos temporários não conta); enviar mensagens, e-mails, comentários, issues ou PRs; fazer qualquer ação paga; alterar credenciais, permissões ou configuração global da máquina; na dúvida, pergunte. Sem uma escolha do usuário, ou se ele recusar (um "Other" que não seja um sim claro conta como recusa), não rode e trate como falha ao aplicar.
+Se houver algo a executar (uma ESTACIONADA aprovada ou uma PROVISÓRIA com outra escolha), antes de executar qualquer coisa nesta fase:
+1. Mostre no chat os comandos exatos que vai rodar: os de cada ESTACIONADA aprovada, os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha, os passos para refazê-la com a escolha nova e o comando de testes do projeto. Destaque os que forem irreversíveis ou externos. Contam como irreversíveis ou externos: fazer push (para qualquer branch), force-push ou merge na branch principal; fazer deploy ou publicar; apagar ou descartar o que não foi criado nesta sessão; reescrever histórico; escrever em banco de dados ou em ambiente compartilhado; alterar arquivos que já existiam fora do diretório do projeto (criar arquivos temporários não conta); enviar mensagens, e-mails, comentários, issues ou PRs; fazer qualquer ação paga; alterar credenciais, permissões ou configuração global da máquina; na dúvida, destaque.
+2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Executar" ou "Parar por agora".
+3. Só com "Executar" rode o que mostrou. Se no meio aparecer um passo irreversível ou externo que não estava na lista, não o rode: pare e trate como falha ao aplicar. Com "Parar por agora", sem uma escolha do usuário (pergunta negada pelo usuário, sem resposta ou ferramenta indisponível) ou com um "Other" que não seja um sim claro, não rode nada: mantenha `status: retomando`, não apague o arquivo e diga "Rode /voltei quando quiser continuar." Pare aqui.
 
 Logo depois de concluir cada uma, inclusive as que não exigem nada, acrescente ` (aplicada)` ao fim da linha `**Resposta:**` dela e grave o arquivo antes de passar à próxima. Assim um /voltei interrompido nunca repete nem pula uma decisão.
 

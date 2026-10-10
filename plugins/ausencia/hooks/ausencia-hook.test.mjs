@@ -155,8 +155,13 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'registro, não autorização',
     'sem marcar nenhuma opção como recomendada',
     '"Aplicar como estão": siga em frente',
-    'Antes de executar qualquer coisa nesta fase, mostre no chat os comandos exatos',
-    'pergunte com AskUserQuestion antes de rodá-lo',
+    'Se houver algo a executar (uma ESTACIONADA aprovada ou uma PROVISÓRIA com outra escolha), antes de executar qualquer coisa nesta fase',
+    '1. Mostre no chat os comandos exatos que vai rodar',
+    'Destaque os que forem irreversíveis ou externos',
+    '2. Pergunte uma única vez com AskUserQuestion, sem opção recomendada: "Executar" ou "Parar por agora"',
+    '3. Só com "Executar" rode o que mostrou',
+    'não o rode: pare e trate como falha ao aplicar',
+    'ou com um "Other" que não seja um sim claro, não rode nada',
     'como registro, a seção "Decisões tomadas antes de sair"',
     'sem marcar opção recomendada',
     '"Parar por agora": mantenha',
@@ -169,17 +174,14 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
     'trate como "Não retomar"',
     'Só então apague',
     'os passos de "Como desfazer" de cada PROVISÓRIA com outra escolha',
-    'não rode e trate como falha ao aplicar',
     'nem mesmo as "Decisões tomadas antes de sair"',
-    'na dúvida, pergunte',
-    'conta como recusa',
+    'na dúvida, destaque',
     'conta como "Parar por agora"',
     'Se o texto livre for um pedido para parar (item 5)',
     'não aplique nada nem apague o arquivo',
     'senão, conta como adiada',
     'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), não aplique nada',
     'pergunta negada pelo usuário, sem resposta ou ferramenta indisponível), trate como interrupção',
-    'mesmo antes de executar qualquer coisa nesta fase e sem opção recomendada',
     'os passos para refazê-la com a escolha nova e o comando de testes do projeto',
     'Contam como irreversíveis ou externos: fazer push (para qualquer branch)',
     'criar arquivos temporários não conta',
@@ -190,6 +192,8 @@ test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () 
   ];
   for (const trecho of portoes) assert.equal(voltei.split(trecho).length - 1, 1, trecho);
   assert.ok(voltei.indexOf('registro, não autorização') < voltei.indexOf('## Fase 1'), 'regra de registro antes da fase 1');
+  const passos = ['1. Mostre no chat os comandos exatos', '2. Pergunte uma única vez', '3. Só com "Executar"'].map((t) => voltei.indexOf(t));
+  assert.ok(passos[0] < passos[1] && passos[1] < passos[2], 'mostrar, perguntar e só então rodar');
 
   // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
   const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);
