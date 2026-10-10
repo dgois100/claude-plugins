@@ -98,6 +98,7 @@ test('localizarAusente: diretório do projeto vazio é ignorado e sem arquivo re
   assert.equal(localizarAusente(undefined, undefined, existeEm()), null);
 });
 const REGRAS = '/plugin/skills/ausente/SKILL.md';
+const RETORNO = '/plugin/skills/voltei/SKILL.md';
 const ARQ = (status, pendentes = 1) =>
   `---\nstatus: ${status}\ndesde: 2026-10-09 22:30\ntarefa: Tarefa X\n---\n\n# Ausente\n\n## Dúvidas\n` +
   '\n- **Resposta:** _pendente_'.repeat(pendentes) +
@@ -155,18 +156,21 @@ test('SessionStart compact: relembra o modo com desde, tarefa e regras', () => {
   assert.ok(saida.additionalContext.includes(REGRAS));
 });
 
-test('SessionStart startup, resume e clear: sugere /voltei com a contagem', () => {
-  for (const source of ['startup', 'resume', 'clear']) {
+test('SessionStart startup, resume, clear e fork: sugere /voltei com a contagem', () => {
+  for (const source of ['startup', 'resume', 'clear', 'fork']) {
     const texto = decidir(sessao(source), ARQ('ausente', 2), REGRAS).hookSpecificOutput.additionalContext;
     assert.match(texto, /2 dúvidas pendentes/, source);
     assert.match(texto, /sugira \/voltei/, source);
   }
 });
 
-test('SessionStart com retomando: avisa o /voltei interrompido, exceto na compactação', () => {
-  const texto = decidir(sessao('startup'), ARQ('retomando', 1), REGRAS).hookSpecificOutput.additionalContext;
+test('SessionStart com retomando: avisa o /voltei interrompido e, na compactação, aponta as regras do retorno', () => {
+  const texto = decidir(sessao('startup'), ARQ('retomando', 1), REGRAS, RETORNO).hookSpecificOutput.additionalContext;
   assert.match(texto, /\/voltei interrompido com 1 dúvida pendente/);
-  assert.equal(decidir(sessao('compact'), ARQ('retomando'), REGRAS), null);
+  const compactado = decidir(sessao('compact'), ARQ('retomando', 2), REGRAS, RETORNO).hookSpecificOutput.additionalContext;
+  assert.match(compactado, /\/voltei em andamento, com 2 dúvidas pendentes/);
+  assert.ok(compactado.includes(RETORNO));
+  assert.ok(!compactado.includes(REGRAS));
 });
 
 test('mensagens: singular e plural da contagem', () => {
@@ -197,4 +201,18 @@ test('Stop: bloqueia uma vez com o checklist', () => {
   }
   assert.equal(decidir(stop(true), ARQ('ausente'), REGRAS), null);
   assert.equal(decidir(stop(false), ARQ('retomando'), REGRAS), null);
+});
+
+test('PreToolUse: a negação ensina a destravar quando o usuário já voltou', () => {
+  const motivo = decidir(pre(), ARQ('ausente'), REGRAS).hookSpecificOutput.permissionDecisionReason;
+  assert.match(motivo, /troque o status para retomando antes de perguntar/);
+});
+
+test('mensagens: sem os caminhos das skills, nada mostra undefined', () => {
+  const textos = [
+    decidir(pre(), ARQ('ausente')).hookSpecificOutput.permissionDecisionReason,
+    decidir(sessao('compact'), ARQ('ausente')).hookSpecificOutput.additionalContext,
+    decidir(sessao('compact'), ARQ('retomando')).hookSpecificOutput.additionalContext,
+  ];
+  for (const texto of textos) assert.ok(!texto.includes('undefined'), texto);
 });

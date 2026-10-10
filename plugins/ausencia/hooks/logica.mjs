@@ -64,20 +64,25 @@ const MSG_SUBAGENTE =
   'no seu relatório final para o agente principal registrar.';
 
 const pendentes = (n) => `${n} dúvida${n === 1 ? '' : 's'} pendente${n === 1 ? '' : 's'}`;
-const skill = (caminhoRegras) => `a skill ausencia:ausente${caminhoRegras ? ` (${caminhoRegras})` : ''}`;
+const skill = (nome, caminho) => `a skill ausencia:${nome}${caminho ? ` (${caminho})` : ''}`;
 const contexto = (evento, texto) => ({ hookSpecificOutput: { hookEventName: evento, additionalContext: texto } });
 
-export function decidir(entrada, conteudo, caminhoRegras) {
+export function decidir(entrada, conteudo, caminhoRegras, caminhoRetorno) {
   const frontmatter = lerFrontmatter(conteudo);
   if (!entrada || !frontmatter) return null;
   const evento = entrada.hook_event_name;
   const n = contarPendentes(conteudo);
 
   if (frontmatter.status === 'retomando') {
-    if (evento === 'SessionStart' && entrada.source !== 'compact') {
-      return contexto('SessionStart', `Há um /voltei interrompido com ${pendentes(n)} no AUSENTE.md; sugira /voltei para terminar.`);
+    if (evento !== 'SessionStart') return null;
+    if (entrada.source === 'compact') {
+      return contexto(
+        'SessionStart',
+        `Há um /voltei em andamento, com ${pendentes(n)} no AUSENTE.md. Releia o AUSENTE.md e siga ${skill('voltei', caminhoRetorno)} ` +
+          'a partir da primeira dúvida pendente (ou da fase 5, se só faltar aplicar).',
+      );
     }
-    return null;
+    return contexto('SessionStart', `Há um /voltei interrompido com ${pendentes(n)} no AUSENTE.md; sugira /voltei para terminar.`);
   }
   if (frontmatter.status !== 'ausente') return null;
 
@@ -90,7 +95,8 @@ export function decidir(entrada, conteudo, caminhoRegras) {
           permissionDecision: 'deny',
           permissionDecisionReason: entrada.agent_id
             ? MSG_SUBAGENTE
-            : `Usuário ausente (AUSENTE.md, status: ausente). Não pergunte. Registre esta dúvida no AUSENTE.md como PROVISÓRIA ou ESTACIONADA, conforme ${skill(caminhoRegras)}, e siga com o trabalho independente.`,
+            : `Usuário ausente (AUSENTE.md, status: ausente). Não pergunte. Registre esta dúvida no AUSENTE.md como PROVISÓRIA ou ESTACIONADA, conforme ${skill('ausente', caminhoRegras)}, e siga com o trabalho independente. ` +
+              'Se o usuário voltou e você está no /voltei, troque o status para retomando antes de perguntar.',
         },
       };
     case 'SessionStart':
@@ -98,7 +104,7 @@ export function decidir(entrada, conteudo, caminhoRegras) {
         return contexto(
           'SessionStart',
           `Modo ausente ativo desde ${frontmatter.desde ?? '(sem data)'}. Tarefa: ${frontmatter.tarefa ?? '(não informada)'}. ` +
-            `Releia o AUSENTE.md e siga ${skill(caminhoRegras)}: nenhuma pergunta no chat, registre dúvidas no arquivo.`,
+            `Releia o AUSENTE.md e siga ${skill('ausente', caminhoRegras)}: nenhuma pergunta no chat, registre dúvidas no arquivo.`,
         );
       }
       return contexto('SessionStart', `Há um AUSENTE.md com status ausente e ${pendentes(n)}. O usuário provavelmente voltou: sugira /voltei.`);

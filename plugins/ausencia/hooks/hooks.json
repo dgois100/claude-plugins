@@ -10,7 +10,7 @@
     ],
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear|compact",
+        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ausencia-hook.mjs"], "timeout": 5 }
         ]

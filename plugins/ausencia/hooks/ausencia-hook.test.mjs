@@ -1,13 +1,15 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decidir } from './logica.mjs';
 
 const HOOK = fileURLToPath(new URL('./ausencia-hook.mjs', import.meta.url));
 const HOOKS_JSON = fileURLToPath(new URL('./hooks.json', import.meta.url));
+const RAIZ_PLUGIN = fileURLToPath(new URL('..', import.meta.url));
 const ARQ = (status) =>
   `---\nstatus: ${status}\ndesde: 2026-10-09 22:30\ntarefa: Tarefa X\n---\n\n## Dúvidas\n- **Resposta:** _pendente_\n`;
 
@@ -83,7 +85,7 @@ test('hooks.json: registra os quatro eventos com node e o script', () => {
   const config = JSON.parse(readFileSync(HOOKS_JSON, 'utf8'));
   const esperado = {
     PreToolUse: 'AskUserQuestion',
-    SessionStart: 'startup|resume|clear|compact',
+    SessionStart: 'startup|resume|clear|compact|fork',
     UserPromptSubmit: undefined,
     Stop: undefined,
   };
@@ -98,4 +100,73 @@ test('hooks.json: registra os quatro eventos com node e o script', () => {
       evento,
     );
   }
+});
+
+// Inicia o hook com o stdin aberto, para o teste controlar quando (e se) a entrada termina.
+function iniciar() {
+  const filho = spawn(process.execPath, [HOOK], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, CLAUDE_PROJECT_DIR: '' },
+  });
+  let saida = '';
+  filho.stdout.on('data', (parte) => {
+    saida += parte;
+  });
+  const fim = new Promise((resolve) => filho.on('close', (codigo) => resolve({ codigo, saida })));
+  return { filho, fim };
+}
+
+test('hook: lê a entrada mesmo quando ela chega aos poucos', async () => {
+  const repo = novoRepo('lento', 'ausente');
+  const json = JSON.stringify({ hook_event_name: 'Stop', cwd: repo, stop_hook_active: false });
+  const { filho, fim } = iniciar();
+  filho.stdin.write(json.slice(0, 10));
+  setTimeout(() => filho.stdin.end(json.slice(10)), 300);
+  const { codigo, saida } = await fim;
+  assert.equal(codigo, 0);
+  assert.equal(JSON.parse(saida).decision, 'block');
+});
+
+test('hook: stdin que nunca fecha não trava o hook', async () => {
+  const inicio = Date.now();
+  const { fim } = iniciar();
+  const { codigo, saida } = await fim;
+  const duracao = Date.now() - inicio;
+  assert.equal(codigo, 0);
+  assert.equal(saida, '');
+  assert.ok(duracao < 4500, `demorou ${duracao} ms`);
+});
+
+test('contrato: skills, manifesto e hook usam os mesmos nomes e marcadores', () => {
+  const ausente = readFileSync(join(RAIZ_PLUGIN, 'skills', 'ausente', 'SKILL.md'), 'utf8');
+  const voltei = readFileSync(join(RAIZ_PLUGIN, 'skills', 'voltei', 'SKILL.md'), 'utf8');
+  const plugin = JSON.parse(readFileSync(join(RAIZ_PLUGIN, '.claude-plugin', 'plugin.json'), 'utf8'));
+
+  // os marcadores que o hook e o /voltei leem aparecem nas skills exatamente assim
+  assert.ok(ausente.includes('status: ausente'));
+  assert.ok(ausente.includes('**Resposta:** _pendente_'));
+  assert.ok(voltei.includes('status: retomando'));
+  assert.ok(voltei.includes('**Resposta:** _pendente_'));
+  assert.ok(voltei.includes(' (aplicada)'));
+  assert.ok(voltei.includes('_dispensada pela D'));
+
+  // o hook fica em silêncio para os próprios comandos do plugin, com e sem prefixo
+  const nomes = [ausente, voltei].map((texto) => texto.match(/^name: (\S+)$/m)[1]);
+  assert.deepEqual(nomes, ['ausente', 'voltei']);
+  const conteudo = '---\nstatus: ausente\n---\n';
+  for (const nome of nomes) {
+    for (const comando of [`/${nome}`, `/${plugin.name}:${nome}`]) {
+      assert.equal(decidir({ hook_event_name: 'UserPromptSubmit', prompt: comando }, conteudo), null, comando);
+    }
+  }
+});
+
+test('contrato: as mensagens do hook apontam para SKILL.md que existem', () => {
+  const caminhoNa = (texto) => texto.match(/\(([^()]+SKILL\.md)\)/)[1];
+  const ausente = novoRepo('contrato-ausente', 'ausente');
+  const negacao = JSON.parse(rodar({ hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', cwd: ausente }).stdout);
+  assert.ok(existsSync(caminhoNa(negacao.hookSpecificOutput.permissionDecisionReason)));
+  const retomando = novoRepo('contrato-retomando', 'retomando');
+  const lembrete = JSON.parse(rodar({ hook_event_name: 'SessionStart', source: 'compact', cwd: retomando }).stdout);
+  assert.ok(existsSync(caminhoNa(lembrete.hookSpecificOutput.additionalContext)));
 });
